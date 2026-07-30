@@ -4,3 +4,5 @@ dist
 *.tsbuildinfo
 storybook-static
 .superpowers
+
+*storybook.log
