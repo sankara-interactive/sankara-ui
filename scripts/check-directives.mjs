@@ -9,9 +9,11 @@ const read = dir =>
 
 const sources = read('src').filter(file => /\.tsx?$/.test(file) && !/\.(test|stories)\./.test(file))
 const missing = []
+let declaring = 0
 
 for (const source of sources) {
   if (!/^['"]use client['"]/.test(fs.readFileSync(source, 'utf8'))) continue
+  declaring++
   const emitted = path
     .join('dist', path.relative('src', source))
     .replace(/\.tsx?$/, '.js')
@@ -29,4 +31,4 @@ if (missing.length > 0) {
   process.exit(1)
 }
 
-console.log(`'use client' preserved in all ${sources.length} source files that declare it.`)
+console.log(`'use client' preserved in all ${declaring} source files that declare it.`)

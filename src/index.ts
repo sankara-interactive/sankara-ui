@@ -1,1 +1,1 @@
-export { cn } from './utilities/cn'
+export { cn } from './utilities/cn.js'
