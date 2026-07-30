@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-styles.mjs && node scripts/check-directives.mjs",
+    "prepack": "yarn build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "yarn typecheck && yarn test && yarn build",
