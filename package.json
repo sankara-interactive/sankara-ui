@@ -19,7 +19,8 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./styles.css": "./dist/styles/tokens.css"
+    "./styles.css": "./dist/styles/tokens.css",
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-styles.mjs && node scripts/check-directives.mjs",
