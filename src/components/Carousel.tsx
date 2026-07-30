@@ -57,6 +57,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
       <div
         ref={trackRef}
         onScroll={onScroll}
+        tabIndex={0}
         className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ gap }}
       >

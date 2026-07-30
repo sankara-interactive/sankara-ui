@@ -84,4 +84,20 @@ describe('Carousel', () => {
     )
     expect(container.firstElementChild?.getAttribute('class')).toMatch(/mt-12$/)
   })
+
+  it('exposes the scroll track to keyboard focus', () => {
+    const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
+    const track = container.querySelector('[tabindex="0"]')
+    expect(track).toBeInTheDocument()
+    expect(track?.className).toMatch(/overflow-x-auto/)
+  })
+
+  it('moves slides with the arrow keys when the track itself has focus', async () => {
+    const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
+    const track = container.querySelector('[tabindex="0"]') as HTMLElement
+    track.focus()
+    expect(track).toHaveFocus()
+    await userEvent.keyboard('{ArrowRight}')
+    expect(screen.getAllByRole('button')[1]).toHaveAttribute('aria-current', 'true')
+  })
 })
