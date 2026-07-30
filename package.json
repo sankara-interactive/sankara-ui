@@ -61,7 +61,7 @@
     "vitest": "^3.0.0"
   },
   "engines": {
-    "node": "^22.14.0"
+    "node": ">=22.14.0"
   },
   "packageManager": "yarn@4.7.0"
 }
