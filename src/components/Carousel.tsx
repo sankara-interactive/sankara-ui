@@ -36,6 +36,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== trackRef.current) return
     if (event.key === 'ArrowRight') {
       event.preventDefault()
       goTo(Math.min(index + 1, slides.length - 1))

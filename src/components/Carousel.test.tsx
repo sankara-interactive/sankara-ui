@@ -52,30 +52,47 @@ describe('Carousel', () => {
   })
 
   it('moves forward one slide on ArrowRight', async () => {
-    render(<Carousel label="Referenzen">{slides}</Carousel>)
+    const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
     await userEvent.click(screen.getAllByRole('button')[0]!)
+    ;(container.querySelector('[tabindex="0"]') as HTMLElement).focus()
     await userEvent.keyboard('{ArrowRight}')
     expect(screen.getAllByRole('button')[1]).toHaveAttribute('aria-current', 'true')
   })
 
   it('moves back one slide on ArrowLeft', async () => {
-    render(<Carousel label="Referenzen">{slides}</Carousel>)
+    const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
     await userEvent.click(screen.getAllByRole('button')[2]!)
+    ;(container.querySelector('[tabindex="0"]') as HTMLElement).focus()
     await userEvent.keyboard('{ArrowLeft}')
     expect(screen.getAllByRole('button')[1]).toHaveAttribute('aria-current', 'true')
   })
 
   it('does not move past the last slide', async () => {
-    render(<Carousel label="Referenzen">{slides}</Carousel>)
+    const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
     await userEvent.click(screen.getAllByRole('button')[2]!)
+    ;(container.querySelector('[tabindex="0"]') as HTMLElement).focus()
     await userEvent.keyboard('{ArrowRight}')
     expect(screen.getAllByRole('button')[2]).toHaveAttribute('aria-current', 'true')
   })
 
   it('does not move before the first slide', async () => {
-    render(<Carousel label="Referenzen">{slides}</Carousel>)
+    const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
     await userEvent.click(screen.getAllByRole('button')[0]!)
+    ;(container.querySelector('[tabindex="0"]') as HTMLElement).focus()
     await userEvent.keyboard('{ArrowLeft}')
+    expect(screen.getAllByRole('button')[0]).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('ignores arrow keys that bubble up from outside the track (e.g. a slide with its own input)', async () => {
+    render(
+      <Carousel label="Referenzen">
+        <input aria-label="search" />
+        <p key="b">Two</p>
+        <p key="c">Three</p>
+      </Carousel>
+    )
+    screen.getByLabelText('search').focus()
+    await userEvent.keyboard('{ArrowRight}')
     expect(screen.getAllByRole('button')[0]).toHaveAttribute('aria-current', 'true')
   })
 
