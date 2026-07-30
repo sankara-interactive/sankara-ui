@@ -43,7 +43,10 @@ describe('Carousel', () => {
   it('scrolls to a slide and marks its dot current when the dot is activated', async () => {
     render(<Carousel label="Referenzen">{slides}</Carousel>)
     await userEvent.click(screen.getAllByRole('button')[2]!)
-    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    // jsdom reports offsetLeft === 0 for every element, so `left: 0` here is
+    // an artifact of the test environment, not evidence the scroll target is
+    // correct — real coverage for that lives in the InCenteredContainer story.
+    expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'smooth' })
     expect(screen.getAllByRole('button')[2]).toHaveAttribute('aria-current', 'true')
     expect(screen.getAllByRole('button')[0]).toHaveAttribute('aria-current', 'false')
   })
