@@ -15,6 +15,12 @@ export type CarouselProps = {
   className?: string
 }
 
+// jsdom does not implement matchMedia, so guard rather than assume it exists.
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 export function Carousel({ children, label, perView = 1, gap = 16, className }: CarouselProps) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
@@ -24,7 +30,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
     const track = trackRef.current
     const slide = track?.children[target] as HTMLElement | undefined
     if (!track || !slide) return
-    track.scrollTo({ left: slide.offsetLeft, behavior: 'smooth' })
+    track.scrollTo({ left: slide.offsetLeft, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
     setIndex(target)
   }
 
