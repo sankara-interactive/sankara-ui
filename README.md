@@ -1,11 +1,11 @@
-# @sankara/ui
+# @sankara-ui/core
 
 Shared UI components for sankara:interactive projects. Next 16 + Tailwind v4.
 
 ## Install
 
 ```sh
-yarn add @sankara/ui
+yarn add @sankara-ui/core
 yarn add @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
 ```
 
@@ -16,8 +16,8 @@ Then in your global stylesheet — **both lines are required**:
 
 ```css
 @import "tailwindcss";
-@import "@sankara/ui/styles.css";
-@source "../node_modules/@sankara/ui";
+@import "@sankara-ui/core/styles.css";
+@source "../node_modules/@sankara-ui/core";
 ```
 
 Tailwind v4 does not scan `node_modules` by default. Without the `@source`
@@ -25,7 +25,7 @@ line the components render completely unstyled, with no error.
 
 ## Theming
 
-`@sankara/ui/styles.css` ships neutral defaults for every token. Override any
+`@sankara-ui/core/styles.css` ships neutral defaults for every token. Override any
 of them in your own `@theme` block, after the import:
 
 | Token | Purpose |
@@ -47,7 +47,7 @@ whichever one you use (the example below sources its icon from
 
 ```tsx
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons'
-import { Icon } from '@sankara/ui'
+import { Icon } from '@sankara-ui/core'
 
 <Icon icon={faChevronDown} size={22} label="Mehr anzeigen" />
 ```
@@ -59,7 +59,7 @@ Omit `label` for decorative icons; they are then hidden from assistive tech.
 ## Carousel
 
 ```tsx
-import { Carousel } from '@sankara/ui'
+import { Carousel } from '@sankara-ui/core'
 
 <Carousel label="Referenzen" perView={2.2}>
   {items.map(item => <Card key={item.id} {...item} />)}

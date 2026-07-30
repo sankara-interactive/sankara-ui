@@ -52,11 +52,11 @@ jobs:
       - name: Verify both entry points resolve
         working-directory: ${{ runner.temp }}/packaging-smoke
         run: |
-          node -e "import('@sankara/ui').then(m => { if (typeof m.Carousel !== 'function') throw new Error('Carousel export missing'); console.log('index entry point OK'); })"
+          node -e "import('@sankara-ui/core').then(m => { if (typeof m.Carousel !== 'function') throw new Error('Carousel export missing'); console.log('index entry point OK'); })"
           node --input-type=module -e "
             import fs from 'node:fs';
             import { fileURLToPath } from 'node:url';
-            const path = fileURLToPath(import.meta.resolve('@sankara/ui/styles.css'));
+            const path = fileURLToPath(import.meta.resolve('@sankara-ui/core/styles.css'));
             if (!fs.existsSync(path)) throw new Error('styles.css export path does not exist: ' + path);
             console.log('styles.css entry point OK:', path);
           "

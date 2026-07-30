@@ -1422,9 +1422,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sankara/ui@workspace:.":
+"@sankara-ui/core@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@sankara/ui@workspace:."
+  resolution: "@sankara-ui/core@workspace:."
   dependencies:
     "@changesets/cli": "npm:^2.31.1"
     "@fortawesome/fontawesome-svg-core": "npm:^7.3.1"

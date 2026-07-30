@@ -1,5 +1,5 @@
 {
-  "name": "@sankara/ui",
+  "name": "@sankara-ui/core",
   "version": "0.0.0",
   "description": "Shared UI components for sankara:interactive projects",
   "license": "MIT",
