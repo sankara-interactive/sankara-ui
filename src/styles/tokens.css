@@ -1,0 +1,9 @@
+@theme {
+  --color-primary: oklch(0.55 0.22 275);
+  --color-primary-contrast: oklch(1 0 0);
+  --color-surface: oklch(1 0 0);
+  --color-on-surface: oklch(0.25 0.02 275);
+  --color-muted: oklch(0.55 0.02 275);
+  --radius-card: 1.125rem;
+  --shadow-raised: 0 16px 40px rgb(0 0 0 / 0.18);
+}
