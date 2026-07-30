@@ -12,18 +12,17 @@
     "*.css"
   ],
   "files": [
-    "dist",
-    "src/styles"
+    "dist"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./styles.css": "./src/styles/tokens.css"
+    "./styles.css": "./dist/styles/tokens.css"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/check-directives.mjs",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-styles.mjs && node scripts/check-directives.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "yarn typecheck && yarn test && yarn build",
