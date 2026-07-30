@@ -41,7 +41,9 @@ of them in your own `@theme` block, after the import:
 ## Icons
 
 `Icon` takes a FontAwesome `IconDefinition`. The package deliberately ships no
-icon set, so it works with the free packages, Pro, or a Kit:
+icon set, so it works with the free packages, Pro, or a Kit — install
+whichever one you use (the example below sources its icon from
+`@fortawesome/free-solid-svg-icons`):
 
 ```tsx
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons'

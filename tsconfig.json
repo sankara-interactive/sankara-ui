@@ -12,5 +12,5 @@
     "noUncheckedIndexedAccess": true,
     "outDir": "dist"
   },
-  "include": ["src", "scripts", "vitest.config.ts", ".storybook"]
+  "include": ["src", "scripts", "vitest.config.ts", ".storybook/*.ts"]
 }
