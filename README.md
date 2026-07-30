@@ -6,7 +6,11 @@ Shared UI components for sankara:interactive projects. Next 16 + Tailwind v4.
 
 ```sh
 yarn add @sankara/ui
+yarn add @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
 ```
+
+`react`, `react-dom` and `tailwindcss` are expected peers — every target
+project already has them.
 
 Then in your global stylesheet — **both lines are required**:
 
