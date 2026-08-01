@@ -7,4 +7,5 @@ export const TOKENS = [
   '--color-muted',
   '--radius-card',
   '--shadow-raised',
+  '--duration-expand',
 ] as const

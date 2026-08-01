@@ -6,4 +6,34 @@
   --color-muted: oklch(0.55 0.02 275);
   --radius-card: 1.125rem;
   --shadow-raised: 0 16px 40px rgb(0 0 0 / 0.18);
+  --duration-expand: 0.3s;
+}
+
+/* Animated <details>, so native summary semantics stay intact. interpolate-size
+   opts the block-size 0 -> auto pair into interpolation; content-visibility is
+   UA-controlled and needs allow-discrete to transition. Browsers without
+   ::details-content snap open instead — nothing here hides the content. */
+.sankara-disclosure {
+  interpolate-size: allow-keywords;
+}
+
+.sankara-disclosure::details-content {
+  block-size: 0;
+  overflow-y: clip;
+  opacity: 0;
+  transition:
+    block-size var(--duration-expand) ease-in-out,
+    opacity var(--duration-expand) ease-in-out,
+    content-visibility var(--duration-expand) allow-discrete;
+}
+
+.sankara-disclosure[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sankara-disclosure::details-content {
+    transition: none;
+  }
 }
