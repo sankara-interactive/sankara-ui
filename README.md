@@ -37,6 +37,7 @@ of them in your own `@theme` block, after the import:
 | `--color-muted` | Secondary text, inactive controls |
 | `--radius-card` | Corner radius for cards and panels |
 | `--shadow-raised` | Elevation for raised surfaces |
+| `--duration-expand` | Open/close duration for `Disclosure` |
 
 ## Icons
 
@@ -68,3 +69,53 @@ import { Carousel } from '@sankara-ui/core'
 
 Static scroll-snap only. Autoplay, looping and synced carousels are not
 included yet.
+
+## Disclosure
+
+Native `<details>`/`<summary>` — a server component that ships no JavaScript.
+
+```tsx
+import { Disclosure } from '@sankara-ui/core'
+
+<Disclosure summary={<h3>Wie lange dauert ein Projekt?</h3>} className="border-t py-5">
+  <p className="pt-4">Zwischen vier und zwölf Wochen.</p>
+</Disclosure>
+```
+
+Give several items the same `name` to make them an exclusive accordion —
+opening one closes the others, natively:
+
+```tsx
+{questions.map(q => (
+  <Disclosure key={q.id} name={`faq-${section.id}`} summary={<h3>{q.question}</h3>}>
+    {q.answer}
+  </Disclosure>
+))}
+```
+
+`name` groups `<details>` across the **whole document**, not just the elements
+you rendered together, so derive it from a stable content id. HTML allows only
+one initially-open member per group; `defaultOpen` on two items sharing a name
+is invalid markup.
+
+Children render directly, with no wrapper element, so the elements you pass
+carry your own attributes — which is how schema.org FAQ microdata works:
+
+```tsx
+<Disclosure itemScope itemType="https://schema.org/Question" summary={<h3 itemProp="name">…</h3>}>
+  <div itemProp="acceptedAnswer" itemScope itemType="https://schema.org/Answer">…</div>
+</Disclosure>
+```
+
+Two caveats worth knowing. A heading inside `<summary>` may lose its heading
+role in some browser/screen-reader pairs — put the heading outside the
+`<details>` where heading navigation matters. And interactive controls inside
+`summary` are not supported; native activation does not survive them.
+
+The open/close transition uses `::details-content` and `interpolate-size`.
+Browsers without them snap open instead of animating — the content stays
+present and reachable either way. `prefers-reduced-motion` disables it.
+
+`indicator` replaces the default chevron. The root carries `group`, so your own
+indicator can express the open state (`group-open:rotate-180`, or a `+`/`−`
+swap with `group-open:hidden`).
