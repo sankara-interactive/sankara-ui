@@ -1,7 +1,9 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import type { ComponentPropsWithRef, ReactNode } from 'react'
 import { cn } from '../utilities/cn.js'
 
-export type DisclosureProps = Omit<ComponentPropsWithoutRef<'details'>, 'children' | 'open'> & {
+// WithRef, not WithoutRef: under React 19 `ref` is an ordinary prop on function
+// components, so it rides along in the spread and reaches the <details> root.
+export type DisclosureProps = Omit<ComponentPropsWithRef<'details'>, 'children' | 'open'> & {
   /** The trigger. Supply your own heading element — it stays your markup. */
   summary: ReactNode
   /** The disclosed region. Rendered directly, with no wrapper element. */

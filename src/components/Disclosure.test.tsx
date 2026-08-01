@@ -74,6 +74,16 @@ describe('Disclosure', () => {
     )
   })
 
+  it('forwards a ref to the details element', () => {
+    let node: HTMLDetailsElement | null = null
+    const { container } = render(
+      <Disclosure summary="Frage" ref={element => void (node = element)}>
+        Antwort
+      </Disclosure>
+    )
+    expect(node).toBe(container.querySelector('details'))
+  })
+
   it('replaces the default indicator when one is supplied', () => {
     render(
       <Disclosure summary="Frage" indicator={<span data-testid="chevron" />}>
