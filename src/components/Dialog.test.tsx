@@ -118,6 +118,39 @@ describe('Dialog', () => {
     expect(onRequestClose).toHaveBeenCalledTimes(1)
   })
 
+  it('reopens when the consumer declines a form-driven close', () => {
+    // onRequestClose is a request. Declining it must not leave the element shut
+    // while the `open` prop still says it is open.
+    const { container } = render(
+      <Dialog open onRequestClose={noop}>
+        <form method="dialog">
+          <button type="submit">Schliessen</button>
+        </form>
+      </Dialog>
+    )
+    const dialog = container.querySelector('dialog')!
+    dialog.close()
+
+    expect(dialog.open).toBe(true)
+    expect(showModal).toHaveBeenCalledTimes(2)
+  })
+
+  it('composes consumer pointer handlers instead of losing dismissal', async () => {
+    const onRequestClose = vi.fn()
+    const onPointerUp = vi.fn()
+    const { container } = render(
+      <Dialog open onRequestClose={onRequestClose} onPointerUp={onPointerUp}>
+        Inhalt
+      </Dialog>
+    )
+    await userEvent.pointer([
+      { target: container.querySelector('dialog')!, coords: { clientX: 10, clientY: 10 } },
+      { keys: '[MouseLeft]', coords: { clientX: 10, clientY: 10 } },
+    ])
+    expect(onPointerUp).toHaveBeenCalled()
+    expect(onRequestClose).toHaveBeenCalledTimes(1)
+  })
+
   it('requests a close for a click outside the panel', async () => {
     const onRequestClose = vi.fn()
     const { container } = render(

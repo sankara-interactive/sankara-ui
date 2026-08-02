@@ -52,6 +52,10 @@ export function Dialog({
   closeOnOutsideClick = true,
   className,
   ref,
+  // Pulled out of the spread so a consumer's handlers compose with the
+  // outside-click detection instead of replacing it.
+  onPointerDown,
+  onPointerUp,
   ...props
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -87,8 +91,13 @@ export function Dialog({
     }
     // Fires for our own close() too. `open` still being true is what identifies
     // a close we did not initiate — a <form method="dialog"> submission.
+    // Reopen before asking: the prop is the source of truth, and a consumer that
+    // declines the request would otherwise be left with a closed element and an
+    // `open` prop that says otherwise. If they honour it, the effect closes it.
     const onNativeClose = () => {
-      if (open) onRequestClose()
+      if (!open) return
+      dialog.showModal()
+      onRequestClose()
     }
 
     dialog.addEventListener('cancel', onCancel)
@@ -117,11 +126,13 @@ export function Dialog({
       ref={attachRef}
       onPointerDown={event => {
         pressedOutside.current = isOutside(event)
+        onPointerDown?.(event)
       }}
       onPointerUp={event => {
         const outside = pressedOutside.current && isOutside(event)
         pressedOutside.current = false
         if (outside && closeOnOutsideClick) onRequestClose()
+        onPointerUp?.(event)
       }}
       className={cn(
         // m-auto restores the UA centering of a modal dialog. Tailwind's
