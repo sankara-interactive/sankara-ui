@@ -388,8 +388,6 @@ documented.
   Verify it in the template before writing the handler; if client-side
   navigation does dismiss the panel on its own, D6 collapses and `Popover`
   becomes a server component.
-- **The `@custom-variant` export in D7 is unverified.** Spike it first, against
-  compiled CSS and with a nested chevron; the fallback is documentation.
 - **`cloneElement` cannot guarantee what it clones.** A custom component as
   trigger may swallow `popovertarget` silently. The runtime check catches
   fragments and multi-node elements, not a component that accepts props and
