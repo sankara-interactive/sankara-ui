@@ -1,3 +1,4 @@
+import { createRef } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
@@ -106,6 +107,80 @@ describe('Popover trigger cloning', () => {
       )
     ).toThrow(/single element/i)
   })
+
+  it('preserves the caller’s onClick alongside the popover wiring', async () => {
+    const onClick = vi.fn()
+    render(
+      <Popover
+        id="p1"
+        trigger={
+          <button type="button" onClick={onClick}>
+            Open
+          </button>
+        }
+      >
+        <p>content</p>
+      </Popover>
+    )
+    await userEvent.click(triggerOf())
+    expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  it('preserves the caller’s ref on the trigger', () => {
+    const ref = createRef<HTMLButtonElement>()
+    render(
+      <Popover
+        id="p1"
+        trigger={
+          <button type="button" ref={ref}>
+            Open
+          </button>
+        }
+      >
+        <p>content</p>
+      </Popover>
+    )
+    expect(ref.current).toBe(triggerOf())
+  })
+})
+
+// `trigger`'s type — ReactElement<ComponentPropsWithoutRef<'button'>> — enforces
+// nothing at the call site: any ReactElement structurally satisfies it, so an
+// <a> typechecks and silently never opens. This dev-only console.error is the
+// only signal a consumer gets.
+describe('Popover trigger tag validation', () => {
+  it('warns when the trigger element is not a button or input', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(
+      <Popover id="p1" trigger={<a href="/leistungen">Open</a>}>
+        <p>content</p>
+      </Popover>
+    )
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('<a>'))
+    errorSpy.mockRestore()
+  })
+
+  it('stays silent for a <button> trigger', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <p>content</p>
+      </Popover>
+    )
+    expect(errorSpy).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
+
+  it('stays silent for a button-like <input> trigger', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(
+      <Popover id="p1" trigger={<input type="button" value="Open" />}>
+        <p>content</p>
+      </Popover>
+    )
+    expect(errorSpy).not.toHaveBeenCalled()
+    errorSpy.mockRestore()
+  })
 })
 
 describe('Popover panel props', () => {
@@ -127,6 +202,24 @@ describe('Popover panel props', () => {
       </Popover>
     )
     expect(panelOf(container).style.getPropertyValue('--sankara-anchor')).toBe('--p1')
+  })
+
+  // TypeScript does not check hyphenated JSX attributes, so a consumer can
+  // pass data-placement through the rest-prop spread without a type error.
+  // The component-owned data-placement must win, or no [data-placement]
+  // selector in styles.css matches and the panel silently loses positioning.
+  it('does not let a spread data-placement override the component-owned one', () => {
+    const { container } = render(
+      <Popover
+        id="p1"
+        placement="top-end"
+        data-placement="evil"
+        trigger={<button type="button">Open</button>}
+      >
+        <p>content</p>
+      </Popover>
+    )
+    expect(panelOf(container)).toHaveAttribute('data-placement', 'top-end')
   })
 })
 

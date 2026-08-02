@@ -60,6 +60,25 @@ export function Popover({
     )
   }
 
+  // TypeScript's ReactElement<ComponentPropsWithoutRef<'button'>> enforces
+  // nothing at the call site — any ReactElement is assignable to it — so an
+  // <a> or a <div> typechecks here and silently never opens: popovertarget
+  // has no effect on a non-button, non-input element. Dev-only, and a
+  // console.error rather than a throw, because an unopenable popover is a
+  // bug to surface, not a reason to crash a consumer's render.
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    typeof trigger.type === 'string' &&
+    trigger.type !== 'button' &&
+    trigger.type !== 'input'
+  ) {
+    console.error(
+      `Popover: \`trigger\` must be a <button type="button"> or a button-like <input>, ` +
+        `got <${trigger.type}>. \`popovertarget\` has no effect on this element and the ` +
+        'popover will never open.'
+    )
+  }
+
   const triggerProps = trigger.props as Partial<ComponentPropsWithoutRef<'button'>>
   // The anchor names travel as one custom property; every anchor declaration
   // itself lives in styles.css, keyed off .sankara-popover-trigger and
@@ -95,13 +114,13 @@ export function Popover({
     <>
       {wiredTrigger}
       <div
+        {...props}
         id={panelId}
         popover="auto"
         data-placement={placement}
         className={cn('sankara-popover', className)}
         style={{ ...style, ...anchor }}
         onClick={handleClick}
-        {...props}
       >
         {children}
       </div>
