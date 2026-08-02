@@ -25,9 +25,14 @@ one-file-per-source, so what's in `src` is what ships.
   keeps the component a server component, ships no JavaScript, and gets the
   keyboard and ARIA contract right by construction. Base UI is the documented
   fallback for what the platform genuinely lacks — not the default.
-- **Public surface is `src/index.ts` only.** A component not re-exported there is
-  invisible to consumers. Two export paths exist in `package.json`: `.` (JS) and
-  `./styles.css` (→ `dist/styles/tokens.css`).
+- **Public surface is `src/index.ts`, plus `Icon`.** A component not re-exported
+  from the barrel is invisible to consumers. Three export paths exist in
+  `package.json`: `.` (JS), `./icon` (→ `dist/components/Icon.js`) and
+  `./styles.css` (→ `dist/styles.css`). `Icon` is out of the barrel on purpose —
+  ESM re-exports are eager, so a barrel that names it drags the optional
+  FontAwesome peers into every consumer, and importing the package fails outright
+  where they aren't installed. Any future component with an optional peer gets
+  the same treatment; nothing else does.
 - **Relative imports must carry the `.js` extension** (`../utilities/cn.js`) even
   from `.ts` sources — `module: nodenext` + `verbatimModuleSyntax`. Extensionless
   imports fail typecheck, and would break consumers' ESM resolution.

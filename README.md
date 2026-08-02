@@ -6,11 +6,15 @@ Shared UI components for sankara:interactive projects. Next 16 + Tailwind v4.
 
 ```sh
 yarn add @sankara-ui/core
-yarn add @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
 ```
 
 `react`, `react-dom` and `tailwindcss` are expected peers — every target
-project already has them.
+project already has them. The two FontAwesome peers are optional and only
+needed for [`Icon`](#icons):
+
+```sh
+yarn add @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
+```
 
 Then in your global stylesheet — **both lines are required**:
 
@@ -42,14 +46,18 @@ of them in your own `@theme` block, after the import:
 
 ## Icons
 
-`Icon` takes a FontAwesome `IconDefinition`. The package deliberately ships no
+`Icon` is the one component that needs FontAwesome, so it sits behind its own
+entry point — the main entry never loads it, and projects that don't use icons
+don't need the peers installed at all.
+
+It takes a FontAwesome `IconDefinition`. The package deliberately ships no
 icon set, so it works with the free packages, Pro, or a Kit — install
 whichever one you use (the example below sources its icon from
 `@fortawesome/free-solid-svg-icons`):
 
 ```tsx
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons'
-import { Icon } from '@sankara-ui/core'
+import { Icon } from '@sankara-ui/core/icon'
 
 <Icon icon={faChevronDown} size={22} label="Mehr anzeigen" />
 ```

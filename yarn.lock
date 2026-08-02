@@ -1454,6 +1454,11 @@ __metadata:
     react: ^19.0.0
     react-dom: ^19.0.0
     tailwindcss: ^4.0.0
+  peerDependenciesMeta:
+    "@fortawesome/fontawesome-svg-core":
+      optional: true
+    "@fortawesome/react-fontawesome":
+      optional: true
   languageName: unknown
   linkType: soft
 
