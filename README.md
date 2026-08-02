@@ -37,7 +37,8 @@ of them in your own `@theme` block, after the import:
 | `--color-muted` | Secondary text, inactive controls |
 | `--radius-card` | Corner radius for cards and panels |
 | `--shadow-raised` | Elevation for raised surfaces |
-| `--duration-expand` | Open/close duration for `Disclosure` |
+| `--duration-expand` | Open/close duration for `Disclosure` and `Dialog` |
+| `--color-backdrop` | `::backdrop` behind an open `Dialog` |
 
 ## Icons
 
@@ -119,3 +120,44 @@ present and reachable either way. `prefers-reduced-motion` disables it.
 `indicator` replaces the default chevron. The root carries `group`, so your own
 indicator can express the open state (`group-open:rotate-180`, or a `+`/`−`
 swap with `group-open:hidden`).
+
+## Dialog
+
+Native `<dialog>` opened with `showModal()`, so the focus trap, Escape, the top
+layer, `::backdrop` and background inertness come from the browser. The open
+state is controlled — there is no built-in trigger.
+
+```tsx
+'use client'
+import { Dialog } from '@sankara-ui/core'
+
+const [open, setOpen] = useState(false)
+
+<button type="button" onClick={() => setOpen(true)}>Termin vereinbaren</button>
+
+<Dialog open={open} onRequestClose={() => setOpen(false)} aria-labelledby="titel">
+  <h2 id="titel">Standort wählen</h2>
+  <button type="button" autoFocus onClick={() => setOpen(false)}>Abbrechen</button>
+</Dialog>
+```
+
+`onRequestClose` is a **request**, not a notification: it fires for Escape, an
+outside click and `<form method="dialog">`, and you decide whether to honour it.
+Closing by setting `open` to `false` does not call it back.
+
+`placement="end"` gives an off-canvas side sheet on the logical inline edge (it
+flips under RTL); `size` is a max-width when centered and a width when it is a
+sheet. `closeOnOutsideClick={false}` governs outside clicks only — Escape always
+closes, deliberately.
+
+Name the dialog yourself with `aria-labelledby` pointing at a heading in the
+content, or `aria-label`. The component adds neither, and a heading without an
+`id` that something references names nothing. Give the least-destructive control
+`autoFocus`, and always include a visible close or cancel button — Escape and
+backdrop clicks are neither discoverable nor available to every input method.
+
+Two known limits. Scrolling behind the dialog is locked with `overflow: hidden`
+on `<html>`, ref-counted across dialogs, which **iOS Safari ignores** — if that
+matters for your site, handle it at the app level. And the open/close transition
+uses `@starting-style` with discrete `display`/`overlay` transitions; browsers
+without them show the dialog instantly rather than animating it.

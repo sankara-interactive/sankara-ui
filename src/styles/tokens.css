@@ -7,6 +7,70 @@
   --radius-card: 1.125rem;
   --shadow-raised: 0 16px 40px rgb(0 0 0 / 0.18);
   --duration-expand: 0.3s;
+  --color-backdrop: rgb(0 0 0 / 0.5);
+}
+
+/* Animated <dialog>. display and overlay must transition discretely, and the
+   entry frame comes from @starting-style. The backdrop needs its own pair of
+   both, or only the panel animates. Unsupported browsers appear instantly. */
+.sankara-dialog {
+  opacity: 0;
+  transition:
+    opacity var(--duration-expand) ease,
+    translate var(--duration-expand) ease,
+    display var(--duration-expand) allow-discrete,
+    overlay var(--duration-expand) allow-discrete;
+}
+
+.sankara-dialog[open] {
+  opacity: 1;
+}
+
+.sankara-dialog::backdrop {
+  background: var(--color-backdrop);
+  opacity: 0;
+  transition:
+    opacity var(--duration-expand) ease,
+    display var(--duration-expand) allow-discrete,
+    overlay var(--duration-expand) allow-discrete;
+}
+
+.sankara-dialog[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .sankara-dialog[open] {
+    opacity: 0;
+  }
+  .sankara-dialog[open]::backdrop {
+    opacity: 0;
+  }
+  .sankara-dialog-end[open] {
+    translate: 100% 0;
+  }
+  [dir='rtl'] .sankara-dialog-end[open] {
+    translate: -100% 0;
+  }
+}
+
+.sankara-dialog-end {
+  translate: 100% 0;
+}
+
+[dir='rtl'] .sankara-dialog-end {
+  translate: -100% 0;
+}
+
+.sankara-dialog-end[open] {
+  translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sankara-dialog,
+  .sankara-dialog::backdrop {
+    transition: none;
+  }
 }
 
 /* Animated <details>, so native summary semantics stay intact. interpolate-size
