@@ -42,14 +42,15 @@ jobs:
       # yarn pack runs the "prepack" script (yarn build), so this also
       # verifies dist exists and is up to date before it's packed.
       - run: yarn pack -o ${{ runner.temp }}/sankara-ui.tgz
+      # Deliberately without the FontAwesome peers: the main entry point must
+      # import cleanly in a project that never renders an Icon.
       - name: Install the tarball into a clean project
         working-directory: ${{ runner.temp }}
         run: |
           mkdir packaging-smoke && cd packaging-smoke
           npm init -y >/dev/null
-          npm install ../sankara-ui.tgz react react-dom \
-            @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
-      - name: Verify both entry points resolve
+          npm install ../sankara-ui.tgz react react-dom
+      - name: Verify the entry points resolve without FontAwesome
         working-directory: ${{ runner.temp }}/packaging-smoke
         run: |
           node -e "import('@sankara-ui/core').then(m => { if (typeof m.Carousel !== 'function') throw new Error('Carousel export missing'); console.log('index entry point OK'); })"
@@ -60,3 +61,8 @@ jobs:
             if (!fs.existsSync(path)) throw new Error('styles.css export path does not exist: ' + path);
             console.log('styles.css entry point OK:', path);
           "
+      - name: Verify the icon entry point resolves once FontAwesome is installed
+        working-directory: ${{ runner.temp }}/packaging-smoke
+        run: |
+          npm install @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
+          node -e "import('@sankara-ui/core/icon').then(m => { if (typeof m.Icon !== 'function') throw new Error('Icon export missing'); console.log('icon entry point OK'); })"
