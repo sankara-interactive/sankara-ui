@@ -173,17 +173,25 @@ so you can express the open state without JavaScript.
 The trigger must be a `<button type="button">` (or a button-like `<input>`):
 `popovertarget` does nothing on an `<a>`, and an untyped `<button>` inside a
 `<form>` submits it. A custom component as trigger has to forward unknown props
-to a real button.
+to a real button — and that forwarded button must be the component's outermost
+element. Wrapping it (`<span><button {...props} /></span>`) still opens the
+popover, but the button is no longer the panel's previous sibling, so
+`:has(+ [popover]:popover-open)` never matches and `popover-open:` silently
+stops working on it.
 
 An unmodified primary click on an `<a href>` inside the panel closes it;
-modified clicks, `target="_blank"`, `download` links and anything that calls
-`preventDefault()` leave it open. The reasoning: a popover's open state is DOM
-state, which a client-side navigation would not reset on its own.
+modified clicks, links whose `target` is anything other than `_self`
+(including but not limited to `target="_blank"`), `download` links and
+anything that calls `preventDefault()` leave it open. The reasoning: a
+popover's open state is DOM state, which a client-side navigation would not
+reset on its own.
 
 Two limits worth knowing. The panel is in the top layer, so it always paints
 above ordinary page content whatever your header's `z-index` — and no `z-index`
 can raise it above a `<dialog>` or a popover opened after it. And CSS anchor
-positioning needs Chrome 129+, Firefox 147+ or Safari 26+; without it the panel
+positioning needs Chrome 129+, Firefox 151+ or Safari 26+ — the gate requires
+both `position-anchor` and `position-area`, and Firefox ships them in 147 and
+151 respectively, so the later version is what governs; without it the panel
 is a full-bleed sheet at the bottom of the viewport instead of an anchored
 dropdown — deliberately a different layout, never a misplaced one.
 

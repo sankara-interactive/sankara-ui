@@ -1,10 +1,10 @@
 # `Popover` — Design
 
 Date: 2026-08-02
-Status: implemented on `feat/popover`, not yet merged; browser matrix run
-2026-08-02 (see Verification) — the remaining holds are real Safari
-18.0–18.3, Firefox, a screen-reader session, and the App Router navigation
-case behind D6
+Status: implemented on `feat/popover`, not yet merged; single-engine
+verification run 2026-08-02 on Chrome 150 only (see Verification) — real
+Safari 18.0–18.3, real Firefox, a screen-reader session, and the App Router
+navigation case behind D6 remain unverified
 Scope: Tier 2 of `next-storyblok-template/docs/enhancement-roadmap.md`, third
 component after `Disclosure` and `Dialog`
 
@@ -155,14 +155,45 @@ The base rules — outside the `@supports` block, and overridden by it — are t
 fallback, and they have to defeat the UA stylesheet, which gives `[popover]`
 `position: fixed; inset: 0; margin: auto`, i.e. viewport-centred. The fallback
 must therefore set, explicitly: `inset: auto 0 0 0`, `margin: 0`, `width: auto`,
-`max-block-size` capped in `svh` with `overflow: auto`, and bottom padding from
-`env(safe-area-inset-bottom)`. Anything less leaves a centred or over-constrained
-box rather than a sheet.
+and `max-block-size` capped in `svh` with `overflow: auto`. Anything less
+leaves a centred or over-constrained box rather than a sheet.
+
+**Shipped differently from the above for the safe-area allowance.** The
+bottom clearance was originally specced as padding —
+`padding-block-end: env(safe-area-inset-bottom)` on top of `inset: auto 0 0 0`.
+Commits `e39b235` and `820f676` moved it onto `inset` instead —
+`inset: auto 0 env(safe-area-inset-bottom) 0`, with no padding declaration —
+for a cascade reason padding can't satisfy: `padding-block-end` and physical
+`padding-bottom` are cascade-equivalent in the default writing mode, so a
+padding-based allowance would shadow a consumer's own `p-4`/`pb-4` utility on
+that side exactly the way an unlayered rule would (see the `@layer components`
+note below). `inset` is already fully owned by this rule for edge-docking —
+the consumer never sets it — so folding the safe-area clearance into `inset`'s
+bottom value costs nothing and leaves every padding utility free for the
+consumer. The anchored branch below clears this offset back to `inset: auto`,
+because an anchored floating panel isn't docked to a screen edge and must not
+inherit clearance meant for the fallback's physical bottom edge.
 
 The result is a deliberate layout, not an approximation of an anchored one — the
 panel is never mispositioned, only presented differently, and a bottom sheet is
 the familiar pattern on the phones where Safari 18 predominantly lives.
 Verification must include 320px, long content, zoom, RTL and safe-area cases.
+
+**The popover rules ship inside `@layer components`, not unlayered.** An
+unlayered rule beats every layered rule regardless of specificity or source
+order — including Tailwind's own utilities, which live in `@layer utilities`.
+An unlayered `.sankara-popover` would therefore silently defeat a consumer's
+own `w-72`, `mt-2`, `max-h-96` or `overflow-visible` (this shipped broken for
+several commits before being caught in final review). `@layer components`
+sits before `@layer utilities` in Tailwind's default layer order
+(`theme, base, components, utilities`), so the rule still reliably loses to
+any consumer utility class on the same property, by layer order alone, with
+no dependency on selector specificity or the order the two stylesheets are
+imported in — the same guarantee "stay unlayered" was reaching for, without
+the footgun of also outranking utilities the rule never intended to fight.
+This is now a load-bearing decision for every future addition to this rule,
+not an implementation detail: a new declaration added to `.sankara-popover`
+outside `@layer components` reintroduces the original bug.
 
 Rejected: measuring the trigger with `getBoundingClientRect()` and re-measuring
 on scroll and resize. That is 15–25 lines reimplementing the platform feature,
@@ -235,14 +266,24 @@ It must also reach *inside* the trigger. The chevron is a child of the button,
 and a child's next sibling is not the panel — a variant written as
 `&:has(+ [popover]:popover-open)` silently never matches on the element people
 will actually put the class on. The variant therefore matches the trigger or any
-descendant of it:
+descendant of it. Shipped, matching what the spike below and `tokens.css`
+actually contain:
 
 ```css
 @custom-variant popover-open (&:is(
-  [popovertarget]:has(+ [popover]:popover-open),
-  [popovertarget]:has(+ [popover]:popover-open) *
+  .sankara-popover-trigger:has(+ [popover]:popover-open),
+  .sankara-popover-trigger:has(+ [popover]:popover-open) *
 ));
 ```
+
+Keyed off `.sankara-popover-trigger`, not the `[popovertarget]` attribute
+selector an earlier draft of this decision used. Deliberate: `[popovertarget]`
+matches *any* element with that attribute, including ones with no relationship
+to this component, and a consumer's own unrelated `popovertarget` markup
+elsewhere on the page would pick up the variant's CSS by accident. The
+component itself is what adds `.sankara-popover-trigger` to the cloned trigger
+(see the API section), so scoping the variant to that class ties it to markup
+this component owns, not to a native attribute anyone could add.
 
 so `popover-open:rotate-180` works on the chevron and on the button alike.
 
@@ -455,9 +496,11 @@ is easy to get wrong.
 - Real Safari 18.0–18.3 — the pre-`position-area`/`position-anchor` engine
   D4's fallback exists for. Everything in the `@supports` row above is a
   same-engine simulation.
-- Firefox. Per D4's own table, `position-area` and `position-anchor` are
-  supported from Firefox 147/151, so the anchored path is expected to work
-  there, but that is inference from MDN compat data, not a browser run.
+- Firefox. Per D4's own table, `position-area` ships in Firefox 147 and
+  `position-anchor` in 151; the `@supports` gate names both, so it only
+  passes from 151 onward. The anchored path is expected to work from
+  Firefox 151, and 147–150 is expected to fall back to the sheet — but that
+  is inference from MDN compat data, not a browser run.
 - A real screen-reader session over the implicit `aria-expanded`/
   `aria-details` mapping from D2. This run inspected computed CSS and
   `:popover-open`/`getBoundingClientRect`, never the accessibility tree.
