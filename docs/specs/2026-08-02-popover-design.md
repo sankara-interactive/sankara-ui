@@ -1,7 +1,10 @@
 # `Popover` — Design
 
 Date: 2026-08-02
-Status: draft, pending implementation
+Status: implemented on `feat/popover`, not yet merged; browser matrix run
+2026-08-02 (see Verification) — the remaining holds are real Safari
+18.0–18.3, Firefox, a screen-reader session, and the App Router navigation
+case behind D6
 Scope: Tier 2 of `next-storyblok-template/docs/enhancement-roadmap.md`, third
 component after `Disclosure` and `Dialog`
 
@@ -381,6 +384,90 @@ dismiss, `Escape`, anchor positioning, `@starting-style`, and the `@supports`
 fallback. jsdom's coverage of the Popover API is itself unconfirmed — if
 `hidePopover` is absent, the handler test stubs it and the limitation is
 documented.
+
+## Verification
+
+Run 2026-08-02 against the Task 5 Storybook build (`Popover--Placements`,
+`Popover--NavDropdown`), on **Chrome 150.0.7871.187 on macOS 26.5.2** —
+confirmed via `navigator.userAgentData.getHighEntropyValues`, not the
+`navigator.userAgent` string alone. One engine only; see below for what this
+does not cover.
+
+Two automation paths were needed, both against the same Chrome build. The
+`claude-in-chrome` extension's automated tab reports `visibilityState:
+"hidden"`, which freezes `requestAnimationFrame` and CSS transitions at
+`currentTime: 0` — usable for geometry and for state changes driven by real
+OS-level input (clicks, `Escape`), not for animation timing. A
+Playwright-controlled page of the same Chrome build reports `visibilityState:
+"visible"` and was used for everything animation-timed and for the
+`@supports` fallback simulation. Dismissal checks (`Escape`, outside click,
+link click, Cmd-click) used real coordinate-based clicks and OS-level key
+events dispatched through `claude-in-chrome`'s `computer` tool, not
+`element.click()` or synthetic `KeyboardEvent` dispatch — a synthetic
+`dispatchEvent('keydown', {key: 'Escape'})` on `document.activeElement` was
+tried first and, correctly, did nothing, because native light-dismiss and
+`Escape`-to-close are UA default actions tied to trusted input.
+
+| Check | Chrome 150 |
+| --- | --- |
+| `bottom-start`: panel inline-start = trigger inline-start; panel below trigger | pass — panelLeft 552.31 = triggerLeft 552.31; panelTop 423.69 = triggerBottom 423.69 |
+| `bottom`: panel centre = trigger centre; panel below trigger | pass — panelCenterX 726.43 = triggerCenterX 726.43; panelTop 423.69 = triggerBottom 423.69 |
+| `bottom-end`: panel inline-end = trigger inline-end; panel below trigger | pass — panelRight 894.47 = triggerRight 894.47; panelTop 423.69 = triggerBottom 423.69 |
+| `top-start`: panel inline-start = trigger inline-start; panel above trigger | pass — panelLeft 910.47 = triggerLeft 910.47; panelBottom 381.69 = triggerTop 381.69 |
+| `top`: panel centre = trigger centre; panel above trigger | pass — panelCenterX 1042.12 = triggerCenterX 1042.12; panelBottom 381.69 = triggerTop 381.69 |
+| `top-end`: panel inline-end = trigger inline-end; panel above trigger | pass — panelRight 1167.69 = triggerRight 1167.69; panelBottom 381.69 = triggerTop 381.69 |
+| D7 variant rotates a chevron *nested inside* the trigger | pass — computed `rotate` on the `<span>` chevron: `none` closed → `180deg` open |
+| `popover="auto"` one-at-a-time: opening a 2nd dropdown closes the 1st | pass — `nav-leistungen` open→closed the instant `nav-ueber-uns` opened |
+| `Escape` closes and returns focus to the trigger | pass — panel closed, `document.activeElement` was the `<button popovertarget="nav-leistungen">` |
+| Click outside closes (light dismiss) | pass |
+| Click on an `<a href>` inside the panel closes it | pass — panel closed, `location.hash` changed to `#beratung` |
+| Cmd-click on that same link does not close the panel | pass — panel stayed open; Chrome opened the link in a new tab (the platform's own modified-click behaviour), which was closed without navigating the test tab |
+| Entry animates | pass — immediately after open: 2 running `Animation`s (opacity, translate), computed opacity `0`; ~500 ms later: opacity `1`, translate `0px`, 0 running animations |
+| Exit animates, panel stays visible mid-exit | pass — immediately after close: `:popover-open` no longer matches but `display` is still `block` and opacity still `1`, with 4 running animations (opacity, translate, `display`, `overlay`); ~500 ms later: `display: none`, opacity `0` |
+| `prefers-reduced-motion: reduce` removes the animation | pass — `emulateMedia({reducedMotion: 'reduce'})`: `transition-duration: 0s`, entry and exit both instant (0 running animations at every check) |
+| `@supports` fallback: full-bleed bottom sheet, 320px viewport, long content, RTL | pass (simulated — see below) — `rect` = `{left: 0, top: 227.2, right: 320, bottom: 568}` against a 320×568 viewport, i.e. edge-to-edge and bottom-pinned with nothing off-screen; height `340.8px` = `60svh` of 568; `overflow-y: auto` with `scrollHeight` 1696 > `clientHeight` 341 against 42 injected links, confirming it scrolls |
+
+Two notes on method, stated plainly rather than left implicit:
+
+- **The `@supports` fallback was simulated, not observed on an unsupporting
+  engine.** `@supports` blocks cannot be disabled from script, so a
+  runtime-injected stylesheet overrode the anchored declarations
+  (`position-anchor: none !important`, `anchor-name: none !important`,
+  `position-area: none !important`, and the base-rule `inset`/`width`/
+  `max-block-size` reasserted with `!important`) on top of a Chrome that does
+  support anchor positioning. This proves the fallback CSS produces the sheet
+  D4 describes; it says nothing about how Safari 18.x actually renders the
+  unmodified rules.
+- **`element.click()` also invoked and toggled the popovers**, used freely
+  for the six placement measurements once it was confirmed to behave
+  identically to a trusted click for this purpose in Chrome. It was
+  deliberately *not* relied on for the dismissal checks above, where trusted
+  input mattered.
+
+Nothing here contradicts a decision in this document; the one result worth
+calling out is D8's exit path: `display` and `overlay` staying in the
+transition list is what keeps the panel rendered and interactive for the
+full 300 ms exit, exactly as the decision requires and exactly the case that
+is easy to get wrong.
+
+**Unobserved, explicitly:**
+
+- Real Safari 18.0–18.3 — the pre-`position-area`/`position-anchor` engine
+  D4's fallback exists for. Everything in the `@supports` row above is a
+  same-engine simulation.
+- Firefox. Per D4's own table, `position-area` and `position-anchor` are
+  supported from Firefox 147/151, so the anchored path is expected to work
+  there, but that is inference from MDN compat data, not a browser run.
+- A real screen-reader session over the implicit `aria-expanded`/
+  `aria-details` mapping from D2. This run inspected computed CSS and
+  `:popover-open`/`getBoundingClientRect`, never the accessibility tree.
+- The App Router client-side navigation case behind D6 — unchanged from the
+  design doc's own open item; Storybook has no router to exercise it.
+- Focus destination after *pointer* light-dismiss (D2's accessibility note
+  that it "leaves focus where the pointer put it") — the outside-click check
+  above confirmed the panel closes, not where focus landed afterward.
+- Zoom and non-zero `env(safe-area-inset-bottom)` for the fallback sheet;
+  the 320px run above was at 100% zoom with a zero safe-area inset.
 
 ## Risks and open questions
 
