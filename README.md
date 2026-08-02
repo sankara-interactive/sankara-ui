@@ -2,6 +2,8 @@
 
 Shared UI components for sankara:interactive projects. Next 16 + Tailwind v4.
 
+Every component, live: **[Storybook](https://sankara-interactive.github.io/sankara-ui/)**.
+
 ## Install
 
 ```sh
