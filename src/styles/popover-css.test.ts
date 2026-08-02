@@ -36,20 +36,20 @@ describe('popover stylesheet', () => {
     expect(supports).toContain('position-area')
   })
 
-  it('overrides the UA popover centring in the fallback', () => {
+  it('overrides the UA popover centring in the fallback, with a safe-area allowance on inset', () => {
     const base = css.match(/\.sankara-popover \{[^}]*}/s)?.[0]
-    expect(base).toContain('inset: auto 0 0 0')
+    expect(base).toContain('inset: auto 0 env(safe-area-inset-bottom) 0')
     expect(base).toContain('margin: 0')
     expect(base).toMatch(/max-block-size: \d+svh/)
     expect(base).toContain('overflow: auto')
   })
 
-  it('clears the fallback safe-area padding in the anchored branch', () => {
+  it('clears the fallback safe-area inset offset in the anchored branch', () => {
     // Lazy match up to the first line that closes flush at column 0 — nested
     // rule braces are indented, so this is the @supports block's own close.
     const supports = css.match(/@supports \([^)]*position-anchor[^{]*\{[\s\S]*?\n\}/)?.[0]
     const anchoredPanel = supports?.match(/\.sankara-popover \{[^}]*}/s)?.[0]
-    expect(anchoredPanel).toContain('padding-block-end: 0')
+    expect(anchoredPanel).toContain('inset: auto;')
   })
 
   it('transitions display and overlay discretely, from the base rule', () => {
