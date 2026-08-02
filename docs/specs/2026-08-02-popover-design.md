@@ -66,6 +66,19 @@ one-open-at-a-time across a nav bar — the last of these being what fgpfister
 uses Radix `NavigationMenu` for, and the direct parallel to `<details name>` in
 `Disclosure`.
 
+Precisely: opening an auto popover closes other *unrelated* auto popovers.
+Nested ones stack, so a popover inside a panel keeps its ancestor open. No
+usage needs that today; it is a tested behaviour, not a supported feature.
+
+Top-layer stacking is absolute in one direction and unavailable in the other:
+the panel always paints above ordinary page content whatever the header's
+`z-index`, and no `z-index` on the panel can raise it above a `<dialog>` or a
+popover opened after it. Panel classes control stacking only within the panel.
+
+The trigger must be a `<button type="button">`, or an `<input>` of type
+`button`, `reset` or `submit`. `popovertarget` has no effect on an `<a>`, and an
+untyped `<button>` inside a `<form>` submits it.
+
 The invoker must be the declarative `popovertarget` attribute, never
 `showPopover()` from JavaScript. Per MDN, the declarative form sets up an
 implicit `aria-expanded` and `aria-details` relationship between invoker and
@@ -74,23 +87,37 @@ only, without the ARIA mapping. brillen-werk's hand-written
 `aria-haspopup="menu"` is therefore both redundant and the wrong role for a
 list of links.
 
-### D3 — Caller-supplied `id`, valid as a CSS identifier
+### D3 — Optional `id`, defaulting to a sanitised `useId`
 
 The `id` is the `popovertarget`, the panel's `id`, and both halves of the anchor
 pair (`anchor-name: --{id}` / `position-anchor: --{id}`). Four things that must
 agree, which is the wiring worth owning.
 
-`useId` cannot supply it. It is a hook, so it would force a client boundary for
-id generation alone, and React's generated ids contain characters that are not
-valid CSS identifiers, so `--{useId()}` is not a usable `anchor-name`.
-brillen-werk builds its anchor name exactly that way; its dropdown may be
-silently unanchored and merely *looking* right because it sits near the top of
-the viewport. **Unverified** — worth checking, but not a claim this spec relies
-on.
+The explicit anchor pair is required, not decorative. MDN documents an
+*implicit* anchor reference between a popover and its `popovertarget` invoker,
+which would make `anchor-name`/`position-anchor` unnecessary — but nothing
+tethers to it unless `position-anchor` resolves to that implicit anchor, and its
+initial value differs per engine (Chrome `none`, Safari 26 `auto`, Firefox 151
+`normal`). Measured in Chrome 150 on a page with two identical popovers:
 
-Consumers already have stable ids (`blok._uid`), the same source `Disclosure`'s
-`name` draws on. Document the two constraints: document-unique, and a valid CSS
-identifier.
+| | trigger | panel |
+| --- | --- | --- |
+| implicit anchor only | top 400, left 300 | **top 0, left 0 — unanchored** |
+| explicit `anchor-name` + `position-anchor` | top 600, left 300 | top 621, left 300 |
+
+So the pair stays until `position-anchor: normal` is interoperable. Revisit then;
+it deletes this decision's complexity entirely.
+
+Because D6 already makes this a client component, `useId` is available. `id` is
+therefore optional, defaulting to `useId()` with characters invalid in a CSS
+identifier stripped — React's generated ids contain `«»` or `:` depending on
+version, and `--«r1»` is not a usable `anchor-name`. An explicit `id` stays
+supported for deterministic markup and tests, and must then be document-unique
+and a valid CSS identifier.
+
+brillen-werk builds its anchor name from a raw `useId()`, so its dropdown is
+likely unanchored and merely *looking* right near the top of the viewport. Not
+verified in their app, and nothing here depends on it.
 
 ### D4 — Anchor positioning in CSS, degrading to a full-bleed sheet
 
@@ -109,15 +136,30 @@ Support, from MDN browser-compat data rather than secondary sources:
 So the feature is interoperable across current engines, and absent from real
 Safari 18.x — the same engine gap the `Disclosure` matrix left open.
 
-Behind `@supports (position-area: bottom)`: `position-area` from `placement`,
-plus `position-try-fallbacks: flip-block, flip-inline` so a panel near a
-viewport edge flips instead of clipping.
+The gate must name both halves, because the two properties ship in different
+versions and `@supports` only proves that what it asks about parses:
 
-Without support: a full-bleed sheet pinned to the bottom of the viewport, with a
-max height and its own scroll. The fallback is a deliberate layout, not an
-approximation of an anchored one — the panel is never mispositioned, only
-presented differently, and a bottom sheet is the familiar pattern on the phones
-where Safari 18 predominantly lives.
+```css
+@supports (position-anchor: --a) and (position-area: block-end) { … }
+```
+
+`position-try-fallbacks: flip-block, flip-inline` goes inside that block but is
+not part of the condition — where it is unsupported the panel simply does not
+flip near a viewport edge, which is a lesser degradation than losing the anchor.
+So the flip is a progressive enhancement, not something the gate promises.
+
+The base rules — outside the `@supports` block, and overridden by it — are the
+fallback, and they have to defeat the UA stylesheet, which gives `[popover]`
+`position: fixed; inset: 0; margin: auto`, i.e. viewport-centred. The fallback
+must therefore set, explicitly: `inset: auto 0 0 0`, `margin: 0`, `width: auto`,
+`max-block-size` capped in `svh` with `overflow: auto`, and bottom padding from
+`env(safe-area-inset-bottom)`. Anything less leaves a centred or over-constrained
+box rather than a sheet.
+
+The result is a deliberate layout, not an approximation of an anchored one — the
+panel is never mispositioned, only presented differently, and a bottom sheet is
+the familiar pattern on the phones where Safari 18 predominantly lives.
+Verification must include 320px, long content, zoom, RTL and safe-area cases.
 
 Rejected: measuring the trigger with `getBoundingClientRect()` and re-measuring
 on scroll and resize. That is 15–25 lines reimplementing the platform feature,
@@ -141,6 +183,14 @@ children.
 Sibling order is load-bearing: the trigger's open-state hook in D7 depends on
 the panel being the trigger's next sibling.
 
+Consequences to document, because returning a fragment is not free:
+
+- Where the parent's content model demands specific children, the caller
+  supplies the wrapper. In a nav bar that means `<li><Popover …/></li>`, as
+  fgpfister and brillen-werk already write.
+- There is no root element, so no root `ref` and no root class. `className`
+  always means the panel.
+
 ### D6 — `'use client'` for one delegated click handler
 
 Four of five usages are lists of links. `popover="auto"` light-dismisses on
@@ -158,66 +208,134 @@ made. The alternative — a documented one-liner on every consumer's nav item �
 pushes the majority case onto every consumer and is exactly the line that gets
 forgotten.
 
+This is public behaviour, not an implementation detail, and the conditions are
+part of the contract. The panel closes only when **all** hold: the click
+resolves to an `<a href>` via `closest()`, it is an unmodified primary click (no
+`ctrl`/`meta`/`shift`/`alt`, `button === 0`), the link has no `download` and no
+`target` other than `_self`, and nothing called `preventDefault()`. A caller's
+own `onClick` on the panel runs first and can cancel the close by preventing
+default — the same gesture that cancels the navigation.
+
+Rejected: a `closeOnLinkActivation` prop. Reading a prop to decide whether to
+attach the handler still requires a client component, so the prop buys nothing
+structural, and every nav consumer would set it. A filter panel containing a
+help link closes when that link is followed, which is correct behaviour for a
+link that navigates away.
+
 ### D7 — Trigger open-state exposed as a Tailwind variant
 
 The platform gives the invoker no open-state hook for CSS, and all three nav
 dropdowns in the estate rotate a chevron on the trigger. Because the panel is
-the trigger's next sibling, `:has(+ [popover]:popover-open)` reaches it.
+the trigger's next sibling, `:has(+ [popover]:popover-open)` reaches the trigger.
 
-Ship it as a `@custom-variant` in `tokens.css` so consumers write
-`popover-open:rotate-180` on their chevron:
+It must also reach *inside* the trigger. The chevron is a child of the button,
+and a child's next sibling is not the panel — a variant written as
+`&:has(+ [popover]:popover-open)` silently never matches on the element people
+will actually put the class on. The variant therefore matches the trigger or any
+descendant of it:
 
 ```css
-@custom-variant popover-open (&:has(+ [popover]:popover-open));
+@custom-variant popover-open (&:is(
+  [popovertarget]:has(+ [popover]:popover-open),
+  [popovertarget]:has(+ [popover]:popover-open) *
+));
 ```
 
-**Spike before relying on this:** confirm a `@custom-variant` declared in an
-imported package stylesheet is picked up by the consumer's Tailwind v4 build. If
-it is not, the fallback is documenting the raw `:has()` selector in the README,
-and nothing else in the design changes.
+so `popover-open:rotate-180` works on the chevron and on the button alike.
+
+**Spike before relying on this**, and check the compiled CSS rather than the
+source: confirm a `@custom-variant` declared in an imported package stylesheet is
+picked up by the consumer's Tailwind v4 build, and that the selector matches a
+chevron nested in the trigger. If either fails, the fallback is documenting the
+raw `:has()` selector in the README, and nothing else in the design changes.
 
 ### D8 — Animation mirrors `Dialog`
 
-`@starting-style` plus `transition-behavior: allow-discrete` on `display` and
-`overlay`, driven by `--duration-expand`, disabled under
-`prefers-reduced-motion`. Engines without `@starting-style` show the panel
-instantly, which is the same degradation `Dialog` documents.
+"Mirrors `Dialog`" is not enough to implement from, because entry is easy and
+exit is where discrete transitions go wrong. The state model, explicitly:
+
+- The closed state lives on the panel's base rules (`opacity: 0`, a small
+  `translate`), the open state on `:popover-open`, and the pre-open state in
+  `@starting-style` attached to `:popover-open`.
+- `transition` is declared on the panel base — not only on `:popover-open` —
+  otherwise the exit never animates because the rule stops applying the moment
+  the popover closes.
+- `display` and `overlay` are both in the transition list with
+  `transition-behavior: allow-discrete`. Omitting `overlay` drops the panel out
+  of the top layer at once and the exit animation plays in the wrong stacking
+  context.
+- Duration is `--duration-expand`; `prefers-reduced-motion: reduce` sets it to
+  `0s` rather than removing the declarations.
+
+Engines without `@starting-style` show the panel instantly, the same degradation
+`Dialog` documents. Verify entry, `Escape` exit, light-dismiss exit, link-click
+exit, reduced motion, and reopening mid-exit.
 
 ## API
 
 ```ts
 type PopoverProps = {
-  /** Document-unique, and a valid CSS identifier. Drives popovertarget,
-      the panel id, and the anchor pair. */
-  id: string
-  /** Rendered as-is; cloned to add popovertarget and anchor-name. */
-  trigger: ReactElement
-  /** position-area keyword. Default 'bottom-start'. */
+  /** Defaults to a sanitised useId(). If given: document-unique and a valid
+      CSS identifier. Drives popovertarget, the panel id, and the anchor pair. */
+  id?: string
+  /** A <button type="button"> or button-like <input>. Cloned to add
+      popovertarget and the anchor-name style. */
+  trigger: ReactElement<ComponentPropsWithoutRef<'button'>>
+  /** Default 'bottom-start'. Mapped to position-area per the table below. */
   placement?:
     | 'bottom-start' | 'bottom' | 'bottom-end'
     | 'top-start' | 'top' | 'top-end'
   /** Panel classes. */
   className?: string
   children: ReactNode
-} & Omit<ComponentPropsWithoutRef<'div'>, 'id' | 'className' | 'children'>
+} & Omit<ComponentPropsWithoutRef<'div'>, 'id' | 'className' | 'children' | 'popover'>
 ```
 
-Remaining props land on the panel. The trigger keeps its own props; the
-component adds only `popovertarget` and the `anchor-name` style.
+Remaining props land on the panel; `popover` and `id` are not overridable
+because the component's behaviour is defined in terms of them. A caller `style`
+is merged, with the component's positioning properties applied last — they win.
+A caller `onClick` composes as described in D6.
+
+`placement` values are API tokens, **not** `position-area` syntax, which takes
+one or two grid keywords. The mapping is logical, so all six flip under RTL:
+
+| `placement` | `position-area` | extra |
+| --- | --- | --- |
+| `bottom-start` (default) | `block-end span-inline-end` | — |
+| `bottom` | `block-end span-all` | `justify-self: anchor-center` |
+| `bottom-end` | `block-end span-inline-start` | — |
+| `top-start` | `block-start span-inline-end` | — |
+| `top` | `block-start span-all` | `justify-self: anchor-center` |
+| `top-end` | `block-start span-inline-start` | — |
+
+The centred rows need `anchor-center` because `block-end center` would constrain
+the panel to the trigger's own width — which is also the documented workaround
+for the `position-area` overflow bugs in Chrome 129–143 and Firefox 147–148.
+
+The trigger is cloned, so: fragments and components that render multiple nodes
+are rejected at runtime with a clear error; a custom component as trigger must
+forward unknown props to a real `<button>`, which the component cannot enforce;
+and a caller-supplied `popovertarget` is overwritten, since it would break the
+pairing.
 
 Panel width is the caller's (`w-72` in fgpfister, `md:w-96` in fairmed,
 `xl:w-[800px]` in nuwa) — no `size` prop.
 
 ## Accessibility
 
-- `aria-expanded` and `aria-details` on the trigger come from the declarative
-  invoker relationship (D2). The component adds neither, and must not.
+- The declarative invoker relationship (D2) establishes an implicit
+  `aria-expanded` and `aria-details` **accessibility mapping** — a state in the
+  accessibility tree, not attributes in the DOM. The component adds neither, and
+  must not; tests assert against the accessibility tree, never `getAttribute`.
 - No `role` on the panel. Nav dropdowns stay lists of links; `aria-haspopup` is
   not added.
 - `Escape` and light dismiss are native to `popover="auto"`.
-- Focus returns to the invoker on dismiss, per the popover focus contract.
-- The trigger must be a `<button>` or an `<input>`; `popovertarget` has no
-  effect on an `<a>`. Document it.
+- Focus: opening does **not** move focus into the panel; it inserts the panel
+  into the sequential focus order after the invoker. Closing by keyboard —
+  `Escape` — returns focus to the invoker. Pointer light-dismiss leaves focus
+  where the pointer put it, and closing via a link click must not pull focus
+  back to a trigger on the page being navigated away from.
+- The trigger element constraint is in D2.
 
 ## Tokens
 
@@ -232,12 +350,19 @@ Vitest, on what jsdom can observe:
 
 - `popovertarget` on the trigger equals the panel's `id`.
 - Panel carries `popover="auto"`; anchor pair is `--{id}` on both sides.
-- Trigger clone preserves the caller's `className`, `onClick` and other props.
+- Trigger clone preserves the caller's `className`, `onClick` and other props,
+  and **merges** rather than replaces a caller `style`.
+- An omitted `id` produces a valid CSS identifier; an explicit one is used
+  verbatim.
 - `placement` maps to the expected `position-area` value; default is
   `bottom-start`.
-- Rest props and `className` land on the panel, not the trigger.
-- A click on an `<a href>` inside the panel calls `hidePopover`; a click on a
-  non-link inside it does not.
+- Rest props and `className` land on the panel, not the trigger; a caller
+  `onClick` on the panel still fires.
+- Link dismissal, per the D6 contract: closes on a plain click on an `<a href>`
+  and on a click on an element nested inside one; does not close for a
+  non-link, a modified click, `target="_blank"`, `download`, or a click whose
+  default was prevented.
+- A fragment or multi-node trigger throws a clear error.
 
 Not testable in jsdom, and stated rather than faked: the top layer, light
 dismiss, `Escape`, anchor positioning, `@starting-style`, and the `@supports`
@@ -251,8 +376,12 @@ documented.
   Verify it in the template before writing the handler; if client-side
   navigation does dismiss the panel on its own, D6 collapses and `Popover`
   becomes a server component.
-- **The `@custom-variant` export in D7 is unverified.** Spike it first; the
-  fallback is documentation.
+- **The `@custom-variant` export in D7 is unverified.** Spike it first, against
+  compiled CSS and with a nested chevron; the fallback is documentation.
+- **`cloneElement` cannot guarantee what it clones.** A custom component as
+  trigger may swallow `popovertarget` silently. The runtime check catches
+  fragments and multi-node elements, not a component that accepts props and
+  drops them.
 - **The `@supports` fallback has never been seen.** No engine available here
   lacks `position-area`, so the sheet layout can only be forced artificially.
   The `Disclosure` matrix has the same shape of gap for real Safari 18.x.
@@ -270,3 +399,5 @@ documented.
   mobile pattern is `Disclosure`, which ships.
 - Tooltips, context menus, select/combobox. Different keyboard contracts.
 - `::backdrop` dimming. No usage in the estate dims behind a dropdown.
+- Nested popovers. They work (D2), and no usage needs them; the spec neither
+  supports nor prevents them.
