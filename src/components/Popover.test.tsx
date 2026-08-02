@@ -15,6 +15,7 @@ describe('Popover wiring', () => {
     expect(triggerOf()).toHaveAttribute('popovertarget', 'nav-services')
     expect(panelOf(container)).toHaveAttribute('id', 'nav-services')
     expect(panelOf(container)).toHaveAttribute('popover', 'auto')
+    expect(panelOf(container).className).toContain('sankara-popover')
   })
 
   it('sets the same anchor custom property on both elements', () => {
@@ -45,6 +46,17 @@ describe('Popover wiring', () => {
       </Popover>
     )
     expect(triggerOf().nextElementSibling).toBe(panelOf(container))
+  })
+
+  it('renders exactly two top-level elements, trigger first, with no wrapper', () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <p>content</p>
+      </Popover>
+    )
+    expect(container.children).toHaveLength(2)
+    expect(container.children[0]).toBe(triggerOf())
+    expect(container.children[1]).toBe(panelOf(container))
   })
 
   it('defaults placement to bottom-start and passes it through', () => {
