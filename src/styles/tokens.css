@@ -110,92 +110,101 @@
    purpose — same as .sankara-dialog and .sankara-disclosure elsewhere in
    this file: the consumer brings the surface via their own utility classes
    (bg-surface, rounded-card, shadow-raised, ...), same tokens either way.
-   This rule stays structural/positioning/motion only, unlayered, so it
-   never has to out-rank an unrelated author's utility class in the cascade
-   — Tailwind's own utilities live in @layer utilities and lose to any
-   unlayered rule regardless of specificity or source order, so a visual
-   default declared here would silently defeat a consumer's own classes.
+   This rule stays structural/positioning/motion only, and ships inside
+   @layer components — NOT unlayered. An unlayered rule beats every layered
+   rule regardless of specificity or source order, which includes Tailwind's
+   own utilities in @layer utilities: a consumer's `w-72`/`mt-2`/`max-h-96`/
+   `overflow-visible` would silently lose to `width: max-content`/`margin: 0`/
+   `max-block-size: 60svh`/`overflow: auto` below. @layer components sits
+   before @layer utilities in Tailwind's default layer order, so this rule
+   still loses to any consumer utility class by layer order alone, with no
+   dependency on selector specificity — the same guarantee the previous
+   unlayered approach was reaching for, without the unlayered footgun.
    The same reasoning rules out padding for the safe-area allowance below:
    padding-block-end and physical padding-bottom are cascade-equivalent in
-   the default writing mode, so it would just as unlayered-beat a consumer's
-   p-4/pb-4. inset is already fully owned by this rule for edge-docking, so
+   the default writing mode, so it would just as easily beat a consumer's
+   p-4/pb-4 if it were unlayered — and even layered, it would still shadow a
+   consumer's own padding value whenever both apply to the same physical
+   side. inset is already fully owned by this rule for edge-docking, so
    the bottom component carries the allowance instead — clearance from the
    physical edge, with every padding utility left free for the consumer. */
-.sankara-popover {
-  position: fixed;
-  inset: auto 0 env(safe-area-inset-bottom) 0;
-  margin: 0;
-  width: auto;
-  max-block-size: 60svh;
-  overflow: auto;
-  opacity: 0;
-  translate: 0 0.25rem;
-  /* On the base rule, not on :popover-open — a transition declared only in the
-     open state stops applying the instant the popover closes, and the exit
-     never animates. overlay must be in the list or the panel leaves the top
-     layer immediately and the exit plays in the wrong stacking context. */
-  transition:
-    opacity var(--duration-expand) ease,
-    translate var(--duration-expand) ease,
-    display var(--duration-expand) allow-discrete,
-    overlay var(--duration-expand) allow-discrete;
-}
-
-.sankara-popover:popover-open {
-  opacity: 1;
-  translate: 0 0;
-}
-
-@starting-style {
-  .sankara-popover:popover-open {
+@layer components {
+  .sankara-popover {
+    position: fixed;
+    inset: auto 0 env(safe-area-inset-bottom) 0;
+    margin: 0;
+    width: auto;
+    max-block-size: 60svh;
+    overflow: auto;
     opacity: 0;
     translate: 0 0.25rem;
-  }
-}
-
-@supports (position-anchor: --a) and (position-area: block-end) {
-  .sankara-popover-trigger {
-    anchor-name: var(--sankara-anchor);
-  }
-
-  .sankara-popover {
-    position-anchor: var(--sankara-anchor);
-    /* Also clears the base rule's safe-area bottom offset: an anchored
-       floating panel isn't docked to a screen edge, so it must not inherit
-       clearance meant for the full-bleed fallback's physical bottom edge. */
-    inset: auto;
-    max-block-size: none;
-    width: max-content;
-    /* Not part of the @supports condition: where try-fallbacks are missing the
-       panel simply does not flip near a viewport edge. */
-    position-try-fallbacks: flip-block, flip-inline;
+    /* On the base rule, not on :popover-open — a transition declared only in the
+       open state stops applying the instant the popover closes, and the exit
+       never animates. overlay must be in the list or the panel leaves the top
+       layer immediately and the exit plays in the wrong stacking context. */
+    transition:
+      opacity var(--duration-expand) ease,
+      translate var(--duration-expand) ease,
+      display var(--duration-expand) allow-discrete,
+      overlay var(--duration-expand) allow-discrete;
   }
 
-  .sankara-popover[data-placement='bottom-start'] {
-    position-area: block-end span-inline-end;
+  .sankara-popover:popover-open {
+    opacity: 1;
+    translate: 0 0;
   }
-  .sankara-popover[data-placement='bottom'] {
-    position-area: block-end span-all;
-    justify-self: anchor-center;
-  }
-  .sankara-popover[data-placement='bottom-end'] {
-    position-area: block-end span-inline-start;
-  }
-  .sankara-popover[data-placement='top-start'] {
-    position-area: block-start span-inline-end;
-  }
-  .sankara-popover[data-placement='top'] {
-    position-area: block-start span-all;
-    justify-self: anchor-center;
-  }
-  .sankara-popover[data-placement='top-end'] {
-    position-area: block-start span-inline-start;
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .sankara-popover {
-    transition: none;
+  @starting-style {
+    .sankara-popover:popover-open {
+      opacity: 0;
+      translate: 0 0.25rem;
+    }
+  }
+
+  @supports (position-anchor: --a) and (position-area: block-end) {
+    .sankara-popover-trigger {
+      anchor-name: var(--sankara-anchor);
+    }
+
+    .sankara-popover {
+      position-anchor: var(--sankara-anchor);
+      /* Also clears the base rule's safe-area bottom offset: an anchored
+         floating panel isn't docked to a screen edge, so it must not inherit
+         clearance meant for the full-bleed fallback's physical bottom edge. */
+      inset: auto;
+      max-block-size: none;
+      width: max-content;
+      /* Not part of the @supports condition: where try-fallbacks are missing the
+         panel simply does not flip near a viewport edge. */
+      position-try-fallbacks: flip-block, flip-inline;
+    }
+
+    .sankara-popover[data-placement='bottom-start'] {
+      position-area: block-end span-inline-end;
+    }
+    .sankara-popover[data-placement='bottom'] {
+      position-area: block-end span-all;
+      justify-self: anchor-center;
+    }
+    .sankara-popover[data-placement='bottom-end'] {
+      position-area: block-end span-inline-start;
+    }
+    .sankara-popover[data-placement='top-start'] {
+      position-area: block-start span-inline-end;
+    }
+    .sankara-popover[data-placement='top'] {
+      position-area: block-start span-all;
+      justify-self: anchor-center;
+    }
+    .sankara-popover[data-placement='top-end'] {
+      position-area: block-start span-inline-start;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sankara-popover {
+      transition: none;
+    }
   }
 }
 
