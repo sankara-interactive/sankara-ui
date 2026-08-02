@@ -129,6 +129,72 @@ present and reachable either way. `prefers-reduced-motion` disables it.
 indicator can express the open state (`group-open:rotate-180`, or a `+`/`−`
 swap with `group-open:hidden`).
 
+## Popover
+
+Native `popover="auto"` with the declarative invoker, so light dismiss, `Escape`,
+the top layer and one-open-at-a-time across a nav bar come from the browser.
+
+```tsx
+import { Popover } from '@sankara-ui/core'
+
+<li>
+  <Popover
+    id={`nav-${item.id}`}
+    className="w-72 rounded-card bg-surface p-2 text-on-surface shadow-raised"
+    trigger={
+      <button type="button" className="flex items-center gap-2">
+        Leistungen
+        <Chevron className="popover-open:rotate-180 transition-transform" />
+      </button>
+    }
+  >
+    <ul>{links}</ul>
+  </Popover>
+</li>
+```
+
+The component renders the trigger and the panel as siblings and adds no wrapper,
+so the `<li>`, `<nav>` or CMS-editable element around them stays yours. It also
+adds no `role` — a dropdown of links is a list of links, not a command menu,
+and ARIA defines `role="menu"` as replacing `Tab` navigation with arrow keys
+and typeahead, the wrong contract here.
+
+`id` is optional and defaults to a generated one. Supply it when you need stable
+markup; it must then be document-unique **and** a valid CSS identifier, because
+it becomes the anchor name.
+
+`placement` takes `bottom-start` (default), `bottom`, `bottom-end`, `top-start`,
+`top` and `top-end`. They are logical, so they flip under RTL.
+
+`popover-open:` is a variant this package ships, tested against Tailwind 4.3.3.
+It works on the trigger itself or on any descendant of it — a chevron, a label —
+so you can express the open state without JavaScript.
+
+The trigger must be a `<button type="button">` (or a button-like `<input>`):
+`popovertarget` does nothing on an `<a>`, and an untyped `<button>` inside a
+`<form>` submits it. A custom component as trigger has to forward unknown props
+to a real button — and that forwarded button must be the component's outermost
+element. Wrapping it (`<span><button {...props} /></span>`) still opens the
+popover, but the button is no longer the panel's previous sibling, so
+`:has(+ [popover]:popover-open)` never matches and `popover-open:` silently
+stops working on it.
+
+An unmodified primary click on an `<a href>` inside the panel closes it;
+modified clicks, links whose `target` is anything other than `_self`
+(including but not limited to `target="_blank"`), `download` links and
+anything that calls `preventDefault()` leave it open. The reasoning: a
+popover's open state is DOM state, which a client-side navigation would not
+reset on its own.
+
+Two limits worth knowing. The panel is in the top layer, so it always paints
+above ordinary page content whatever your header's `z-index` — and no `z-index`
+can raise it above a `<dialog>` or a popover opened after it. And CSS anchor
+positioning needs Chrome 129+, Firefox 151+ or Safari 26+ — the gate requires
+both `position-area`, which Firefox ships in 147, and `position-anchor`, whose
+Firefox support is partial before 151. Without them the panel is a full-bleed
+sheet at the bottom of the viewport instead of an anchored dropdown —
+deliberately a different layout, never a misplaced one.
+
 ## Dialog
 
 Native `<dialog>` opened with `showModal()`, so the focus trap, Escape, the top
