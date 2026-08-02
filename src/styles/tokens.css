@@ -10,95 +10,103 @@
   --color-backdrop: rgb(0 0 0 / 0.5);
 }
 
-/* Animated <dialog>. display and overlay must transition discretely, and the
-   entry frame comes from @starting-style. The backdrop needs its own pair of
-   both, or only the panel animates. Unsupported browsers appear instantly. */
-.sankara-dialog {
-  opacity: 0;
-  transition:
-    opacity var(--duration-expand) ease,
-    translate var(--duration-expand) ease,
-    display var(--duration-expand) allow-discrete,
-    overlay var(--duration-expand) allow-discrete;
-}
+@layer components {
+  /* Animated <dialog>. display and overlay must transition discretely, and the
+     entry frame comes from @starting-style. The backdrop needs its own pair of
+     both, or only the panel animates. Unsupported browsers appear instantly.
+     Layered for the reason spelled out above .sankara-popover below: unlayered
+     rules beat Tailwind's utilities outright, so a consumer's own opacity or
+     translate class on the dialog would silently lose to these. */
+  .sankara-dialog {
+    opacity: 0;
+    transition:
+      opacity var(--duration-expand) ease,
+      translate var(--duration-expand) ease,
+      display var(--duration-expand) allow-discrete,
+      overlay var(--duration-expand) allow-discrete;
+  }
 
-.sankara-dialog[open] {
-  opacity: 1;
-}
-
-.sankara-dialog::backdrop {
-  background: var(--color-backdrop);
-  opacity: 0;
-  transition:
-    opacity var(--duration-expand) ease,
-    display var(--duration-expand) allow-discrete,
-    overlay var(--duration-expand) allow-discrete;
-}
-
-.sankara-dialog[open]::backdrop {
-  opacity: 1;
-}
-
-@starting-style {
   .sankara-dialog[open] {
-    opacity: 0;
+    opacity: 1;
   }
+
+  .sankara-dialog::backdrop {
+    background: var(--color-backdrop);
+    opacity: 0;
+    transition:
+      opacity var(--duration-expand) ease,
+      display var(--duration-expand) allow-discrete,
+      overlay var(--duration-expand) allow-discrete;
+  }
+
   .sankara-dialog[open]::backdrop {
-    opacity: 0;
+    opacity: 1;
   }
-  .sankara-dialog-end[open] {
+
+  @starting-style {
+    .sankara-dialog[open] {
+      opacity: 0;
+    }
+    .sankara-dialog[open]::backdrop {
+      opacity: 0;
+    }
+    .sankara-dialog-end[open] {
+      translate: 100% 0;
+    }
+    [dir='rtl'] .sankara-dialog-end[open] {
+      translate: -100% 0;
+    }
+  }
+
+  .sankara-dialog-end {
     translate: 100% 0;
   }
-  [dir='rtl'] .sankara-dialog-end[open] {
+
+  [dir='rtl'] .sankara-dialog-end {
     translate: -100% 0;
   }
-}
 
-.sankara-dialog-end {
-  translate: 100% 0;
-}
+  .sankara-dialog-end[open] {
+    translate: 0 0;
+  }
 
-[dir='rtl'] .sankara-dialog-end {
-  translate: -100% 0;
-}
-
-.sankara-dialog-end[open] {
-  translate: 0 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sankara-dialog,
-  .sankara-dialog::backdrop {
-    transition: none;
+  @media (prefers-reduced-motion: reduce) {
+    .sankara-dialog,
+    .sankara-dialog::backdrop {
+      transition: none;
+    }
   }
 }
 
-/* Animated <details>, so native summary semantics stay intact. interpolate-size
-   opts the block-size 0 -> auto pair into interpolation; content-visibility is
-   UA-controlled and needs allow-discrete to transition. Browsers without
-   ::details-content snap open instead — nothing here hides the content. */
-.sankara-disclosure {
-  interpolate-size: allow-keywords;
-}
+@layer components {
+  /* Animated <details>, so native summary semantics stay intact. interpolate-size
+     opts the block-size 0 -> auto pair into interpolation; content-visibility is
+     UA-controlled and needs allow-discrete to transition. Browsers without
+     ::details-content snap open instead — nothing here hides the content.
+     Layered for the same reason as the dialog above. */
+  .sankara-disclosure {
+    interpolate-size: allow-keywords;
+  }
 
-.sankara-disclosure::details-content {
-  block-size: 0;
-  overflow-y: clip;
-  opacity: 0;
-  transition:
-    block-size var(--duration-expand) ease-in-out,
-    opacity var(--duration-expand) ease-in-out,
-    content-visibility var(--duration-expand) allow-discrete;
-}
-
-.sankara-disclosure[open]::details-content {
-  block-size: auto;
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
   .sankara-disclosure::details-content {
-    transition: none;
+    block-size: 0;
+    overflow-y: clip;
+    opacity: 0;
+    transition:
+      block-size var(--duration-expand) ease-in-out,
+      opacity var(--duration-expand) ease-in-out,
+      content-visibility var(--duration-expand) allow-discrete;
+  }
+
+  .sankara-disclosure[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sankara-disclosure::details-content {
+      transition: none;
+    }
   }
 }
 
