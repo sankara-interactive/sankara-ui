@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Popover } from './Popover.js'
@@ -188,6 +188,19 @@ describe('Popover link dismissal', () => {
     await user.keyboard('{Meta>}')
     await user.click(screen.getByRole('link'))
     await user.keyboard('{/Meta}')
+    expect(hidePopover).not.toHaveBeenCalled()
+  })
+
+  it('stays open for a non-primary button click', () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <a href="/leistungen">Leistungen</a>
+      </Popover>
+    )
+    const hidePopover = stubHidePopover(container)
+    // userEvent.click always sends button 0 (primary); fireEvent lets us
+    // dispatch a genuine non-primary (e.g. middle-click) click event.
+    fireEvent.click(screen.getByRole('link'), { button: 1 })
     expect(hidePopover).not.toHaveBeenCalled()
   })
 
