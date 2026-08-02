@@ -1,8 +1,8 @@
 # `Disclosure` — Design
 
 Date: 2026-08-01
-Status: draft, revised after external review; approval gated on the browser/AT
-matrix in Risks
+Status: shipped in 0.2.0; browser matrix run 2026-08-02 (see Verification), the
+gate's remaining holds are real Safari 18.0–18.3 and a screen-reader session
 Scope: Tier 2 of `next-storyblok-template/docs/enhancement-roadmap.md`, first component
 
 ## Problem
@@ -214,13 +214,42 @@ transitions, `interpolate-size`, native exclusive close, find-in-page expansion,
 and the Safari marker. Those are Storybook stories plus the real-browser matrix
 below.
 
+## Verification
+
+Run 2026-08-02 against the `next-storyblok-template` FAQ page (a real consumer,
+not Storybook), driven by Playwright 1.62. Note WebKit 26.5 is trunk — it is
+Safari-26-class and cannot stand in for Safari 18.x.
+
+| Check | Chromium 151 | Firefox 153 | WebKit 26.5 |
+| --- | --- | --- | --- |
+| `::details-content` supported | yes | yes | yes |
+| `interpolate-size` supported | yes | **no** | **no** |
+| Exclusive grouping (open 2nd closes 1st) | pass | pass | pass |
+| Keyboard: focus summary + Enter opens | pass | pass | pass |
+| Closed content in DOM, hidden | pass | pass | pass |
+| Open content visible after toggle | pass | pass | pass |
+| Native marker hidden (visual + computed) | pass | pass | pass |
+| `h3` in `summary` keeps heading role (aria tree) | level 3 | level 3 | level 3 |
+| RTL: chevron flips to inline-end | pass | — | pass |
+| 320px viewport: no overflow, operable | pass | pass | pass |
+| forced-colors: text and chevrons legible | pass | n/a | n/a |
+
+Two results settle open questions in this document. Firefox and WebKit both
+lack `interpolate-size`, so they take the degradation path this spec worried
+about — the toggle is instant instead of animated and everything stays present,
+reachable and operable, which is the outcome it assumed but had never observed.
+And marker hiding does not depend on `::-webkit-details-marker` at all:
+`summary` is `display: flex`, which drops the list-item marker in all three
+engines.
+
 ## Risks and open questions
 
-- **The browser/AT matrix is an approval gate, not an open question.** Before
-  this is the only animation path, verify against the estate's targets:
-  `::details-content` (Safari 18.4+), `interpolate-size` (still limited per MDN),
-  `<details name>`, the unsupported-path fallback actually showing content, the
-  Safari marker, and heading announcement in at least one screen reader.
+- **The browser/AT matrix is an approval gate, not an open question.** Mostly
+  closed by the run above. Still outstanding: real Safari 18.0–18.3 (the
+  pre-`::details-content` engines — expected to take the same instant-toggle
+  fallback, expected rather than observed), a real screen-reader session on the
+  heading-in-`summary` question (an aria tree is not VoiceOver or NVDA), and
+  find-in-page into closed content, which is not automatable.
 - **Schema.org FAQ microdata** is a current need in fairmed and nuwa, not a
   future one. D6 plus root prop spreading covers it without a `faqSchema` flag;
   confirm against both sites' markup during implementation.
