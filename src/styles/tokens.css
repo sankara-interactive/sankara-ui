@@ -101,3 +101,97 @@
     transition: none;
   }
 }
+
+/* Native popover panel. The UA stylesheet gives [popover] inset: 0 and
+   margin: auto, i.e. viewport-centred, so the base rules here are both the
+   reset and the no-anchor-support fallback: a full-bleed bottom sheet. The
+   @supports branch below turns that into an anchored panel. */
+.sankara-popover {
+  position: fixed;
+  inset: auto 0 0 0;
+  margin: 0;
+  width: auto;
+  max-block-size: 60svh;
+  overflow: auto;
+  padding-block-end: env(safe-area-inset-bottom);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  border: 0;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
+  opacity: 0;
+  translate: 0 0.25rem;
+  /* On the base rule, not on :popover-open — a transition declared only in the
+     open state stops applying the instant the popover closes, and the exit
+     never animates. overlay must be in the list or the panel leaves the top
+     layer immediately and the exit plays in the wrong stacking context. */
+  transition:
+    opacity var(--duration-expand) ease,
+    translate var(--duration-expand) ease,
+    display var(--duration-expand) allow-discrete,
+    overlay var(--duration-expand) allow-discrete;
+}
+
+.sankara-popover:popover-open {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@starting-style {
+  .sankara-popover:popover-open {
+    opacity: 0;
+    translate: 0 0.25rem;
+  }
+}
+
+@supports (position-anchor: --a) and (position-area: block-end) {
+  .sankara-popover-trigger {
+    anchor-name: var(--sankara-anchor);
+  }
+
+  .sankara-popover {
+    position-anchor: var(--sankara-anchor);
+    inset: auto;
+    max-block-size: none;
+    width: max-content;
+    /* Not part of the @supports condition: where try-fallbacks are missing the
+       panel simply does not flip near a viewport edge. */
+    position-try-fallbacks: flip-block, flip-inline;
+  }
+
+  .sankara-popover[data-placement='bottom-start'] {
+    position-area: block-end span-inline-end;
+  }
+  .sankara-popover[data-placement='bottom'] {
+    position-area: block-end span-all;
+    justify-self: anchor-center;
+  }
+  .sankara-popover[data-placement='bottom-end'] {
+    position-area: block-end span-inline-start;
+  }
+  .sankara-popover[data-placement='top-start'] {
+    position-area: block-start span-inline-end;
+  }
+  .sankara-popover[data-placement='top'] {
+    position-area: block-start span-all;
+    justify-self: anchor-center;
+  }
+  .sankara-popover[data-placement='top-end'] {
+    position-area: block-start span-inline-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sankara-popover {
+    transition: none;
+  }
+}
+
+/* The platform gives the invoker no open-state hook. The panel is the trigger's
+   next sibling, so :has() reaches it — and the variant must match the trigger
+   *or any descendant*, because the chevron people put the class on is a child
+   of the button and its own next sibling is not the panel. */
+@custom-variant popover-open (&:is(
+  .sankara-popover-trigger:has(+ [popover]:popover-open),
+  .sankara-popover-trigger:has(+ [popover]:popover-open) *
+));
