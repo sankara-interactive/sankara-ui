@@ -190,10 +190,10 @@ Two limits worth knowing. The panel is in the top layer, so it always paints
 above ordinary page content whatever your header's `z-index` — and no `z-index`
 can raise it above a `<dialog>` or a popover opened after it. And CSS anchor
 positioning needs Chrome 129+, Firefox 151+ or Safari 26+ — the gate requires
-both `position-anchor` and `position-area`, and Firefox ships them in 147 and
-151 respectively, so the later version is what governs; without it the panel
-is a full-bleed sheet at the bottom of the viewport instead of an anchored
-dropdown — deliberately a different layout, never a misplaced one.
+both `position-area`, which Firefox ships in 147, and `position-anchor`, whose
+Firefox support is partial before 151. Without them the panel is a full-bleed
+sheet at the bottom of the viewport instead of an anchored dropdown —
+deliberately a different layout, never a misplaced one.
 
 ## Dialog
 
