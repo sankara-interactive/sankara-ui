@@ -7,6 +7,7 @@ import {
   useId,
   type ComponentPropsWithoutRef,
   type CSSProperties,
+  type MouseEvent,
   type ReactElement,
   type ReactNode,
 } from 'react'
@@ -47,6 +48,7 @@ export function Popover({
   className,
   children,
   style,
+  onClick,
   ...props
 }: PopoverProps) {
   const generatedId = useId()
@@ -72,6 +74,23 @@ export function Popover({
     style: { ...triggerProps.style, ...anchor },
   })
 
+  // popover="auto" light-dismisses on clicks *outside* the panel. A link inside
+  // it navigates, and with App Router the header layout survives, so the panel
+  // would stay open over the new page. Optional call: jsdom and pre-popover
+  // browsers have no hidePopover.
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    onClick?.(event)
+    if (event.defaultPrevented) return
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return
+    }
+    const link = (event.target as HTMLElement).closest?.('a[href]')
+    if (!link || link.hasAttribute('download')) return
+    const target = link.getAttribute('target')
+    if (target && target !== '_self') return
+    event.currentTarget.hidePopover?.()
+  }
+
   return (
     <>
       {wiredTrigger}
@@ -81,6 +100,7 @@ export function Popover({
         data-placement={placement}
         className={cn('sankara-popover', className)}
         style={{ ...style, ...anchor }}
+        onClick={handleClick}
         {...props}
       >
         {children}

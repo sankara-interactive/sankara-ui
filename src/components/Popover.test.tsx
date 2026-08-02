@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { userEvent } from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { Popover } from './Popover.js'
 
 const panelOf = (container: HTMLElement) => container.querySelector('[popover]') as HTMLElement
@@ -126,5 +127,100 @@ describe('Popover panel props', () => {
       </Popover>
     )
     expect(panelOf(container).style.getPropertyValue('--sankara-anchor')).toBe('--p1')
+  })
+})
+
+// jsdom 25 implements no part of the Popover API, so the method the component
+// calls has to exist before it can be asserted on.
+function stubHidePopover(container: HTMLElement) {
+  const panel = container.querySelector('[popover]') as HTMLElement
+  const hidePopover = vi.fn()
+  Object.assign(panel, { hidePopover })
+  return hidePopover
+}
+
+describe('Popover link dismissal', () => {
+  it('closes when a link inside the panel is clicked', async () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <a href="/leistungen">Leistungen</a>
+      </Popover>
+    )
+    const hidePopover = stubHidePopover(container)
+    await userEvent.click(screen.getByRole('link'))
+    expect(hidePopover).toHaveBeenCalledOnce()
+  })
+
+  it('closes when an element nested inside a link is clicked', async () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <a href="/leistungen"><span>Leistungen</span></a>
+      </Popover>
+    )
+    const hidePopover = stubHidePopover(container)
+    await userEvent.click(screen.getByText('Leistungen'))
+    expect(hidePopover).toHaveBeenCalledOnce()
+  })
+
+  it('stays open for a click that is not a link', async () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <button type="button">Filter</button>
+      </Popover>
+    )
+    const hidePopover = stubHidePopover(container)
+    await userEvent.click(screen.getByRole('button', { name: 'Filter' }))
+    expect(hidePopover).not.toHaveBeenCalled()
+  })
+
+  it('stays open for a modified click', async () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <a href="/leistungen">Leistungen</a>
+      </Popover>
+    )
+    const hidePopover = stubHidePopover(container)
+    // A held modifier key only carries across calls within the same session:
+    // the top-level userEvent.* functions each start a fresh session, so the
+    // Meta keydown from a separate userEvent.keyboard() call would never reach
+    // a later userEvent.click() call.
+    const user = userEvent.setup()
+    await user.keyboard('{Meta>}')
+    await user.click(screen.getByRole('link'))
+    await user.keyboard('{/Meta}')
+    expect(hidePopover).not.toHaveBeenCalled()
+  })
+
+  it('stays open for target="_blank" and for download links', async () => {
+    const { container } = render(
+      <Popover id="p1" trigger={<button type="button">Open</button>}>
+        <a href="/a" target="_blank" rel="noreferrer">extern</a>
+        <a href="/b.pdf" download>pdf</a>
+      </Popover>
+    )
+    const hidePopover = stubHidePopover(container)
+    await userEvent.click(screen.getByRole('link', { name: 'extern' }))
+    await userEvent.click(screen.getByRole('link', { name: 'pdf' }))
+    expect(hidePopover).not.toHaveBeenCalled()
+  })
+
+  it('runs a caller onClick first and honours preventDefault', async () => {
+    const order: string[] = []
+    const { container } = render(
+      <Popover
+        id="p1"
+        trigger={<button type="button">Open</button>}
+        onClick={event => {
+          order.push('caller')
+          event.preventDefault()
+        }}
+      >
+        <a href="/leistungen">Leistungen</a>
+      </Popover>
+    )
+    const hidePopover = vi.fn(() => order.push('close'))
+    Object.assign(container.querySelector('[popover]') as HTMLElement, { hidePopover })
+    await userEvent.click(screen.getByRole('link'))
+    expect(order).toEqual(['caller'])
   })
 })
