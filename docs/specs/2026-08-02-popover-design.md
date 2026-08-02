@@ -243,11 +243,23 @@ descendant of it:
 
 so `popover-open:rotate-180` works on the chevron and on the button alike.
 
-**Spike before relying on this**, and check the compiled CSS rather than the
-source: confirm a `@custom-variant` declared in an imported package stylesheet is
-picked up by the consumer's Tailwind v4 build, and that the selector matches a
-chevron nested in the trigger. If either fails, the fallback is documenting the
-raw `:has()` selector in the README, and nothing else in the design changes.
+**Spiked, confirmed.** Tested against Tailwind CSS 4.3.3 (`@tailwindcss/cli`):
+a minimal npm project imported a copy of `tokens.css` (with the `@custom-variant
+popover-open` block appended) via `@import "./pkg/tokens.css";` after
+`@import "tailwindcss";`, then used `popover-open:rotate-180` on a `<span>`
+nested inside a `.sankara-popover-trigger` button and `popover-open:opacity-100`
+on the sibling `[popover]` panel. The compiled output contained:
+
+```css
+.popover-open\:rotate-180:is(.sankara-popover-trigger:has( + [popover]:popover-open), .sankara-popover-trigger:has( + [popover]:popover-open) * ) {
+  rotate: 180deg;
+}
+```
+
+This confirms both open questions: a `@custom-variant` declared in an
+*imported package* stylesheet does reach the consumer's Tailwind v4 build, and
+the compiled selector's `* ` branch matches the nested chevron, not only the
+trigger itself. D7 ships the variant as designed; no fallback needed.
 
 ### D8 — Animation mirrors `Dialog`
 
