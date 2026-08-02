@@ -44,13 +44,28 @@ describe('popover stylesheet', () => {
     expect(base).toContain('overflow: auto')
   })
 
+  it('clears the fallback safe-area padding in the anchored branch', () => {
+    // Lazy match up to the first line that closes flush at column 0 — nested
+    // rule braces are indented, so this is the @supports block's own close.
+    const supports = css.match(/@supports \([^)]*position-anchor[^{]*\{[\s\S]*?\n\}/)?.[0]
+    const anchoredPanel = supports?.match(/\.sankara-popover \{[^}]*}/s)?.[0]
+    expect(anchoredPanel).toContain('padding-block-end: 0')
+  })
+
   it('transitions display and overlay discretely, from the base rule', () => {
     const base = css.match(/\.sankara-popover \{[^}]*}/s)?.[0]
     expect(base).toContain('display var(--duration-expand) allow-discrete')
     expect(base).toContain('overlay var(--duration-expand) allow-discrete')
   })
 
-  it('ships the popover-open variant', () => {
-    expect(css).toContain('@custom-variant popover-open')
+  it('matches the trigger and any of its descendants when the panel is open', () => {
+    const variant = css.match(/@custom-variant popover-open \([^;]*\);/s)?.[0]
+    expect(variant).toBeTruthy()
+    expect(variant).toContain(
+      '.sankara-popover-trigger:has(+ [popover]:popover-open)'
+    )
+    expect(variant).toContain(
+      '.sankara-popover-trigger:has(+ [popover]:popover-open) *'
+    )
   })
 })
