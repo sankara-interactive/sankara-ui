@@ -155,8 +155,9 @@ import { Popover } from '@sankara-ui/core'
 
 The component renders the trigger and the panel as siblings and adds no wrapper,
 so the `<li>`, `<nav>` or CMS-editable element around them stays yours. It also
-adds no `role` — a dropdown of links is a list of links, and `role="menu"` would
-make screen readers announce a command menu and swap `Tab` for the arrow keys.
+adds no `role` — a dropdown of links is a list of links, not a command menu,
+and ARIA defines `role="menu"` as replacing `Tab` navigation with arrow keys
+and typeahead, the wrong contract here.
 
 `id` is optional and defaults to a generated one. Supply it when you need stable
 markup; it must then be document-unique **and** a valid CSS identifier, because
@@ -174,10 +175,10 @@ The trigger must be a `<button type="button">` (or a button-like `<input>`):
 `<form>` submits it. A custom component as trigger has to forward unknown props
 to a real button.
 
-Clicking a link inside the panel closes it — otherwise the panel survives a
-client-side navigation and hangs over the new page. Modified clicks,
-`target="_blank"`, `download` links and anything that calls `preventDefault()`
-leave it open.
+An unmodified primary click on an `<a href>` inside the panel closes it;
+modified clicks, `target="_blank"`, `download` links and anything that calls
+`preventDefault()` leave it open. The reasoning: a popover's open state is DOM
+state, which a client-side navigation would not reset on its own.
 
 Two limits worth knowing. The panel is in the top layer, so it always paints
 above ordinary page content whatever your header's `z-index` — and no `z-index`
