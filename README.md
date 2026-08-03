@@ -82,6 +82,71 @@ import { Carousel } from '@sankara-ui/core'
 Static scroll-snap only. Autoplay, looping and synced carousels are not
 included yet.
 
+## Button
+
+Correctness, not appearance. `Button` gives you `type="button"` by default, one
+prop to render as a link, native `disabled`, and a focus ring — and no colours,
+padding or radius, because every project's differ. Bring your own classes.
+
+```tsx
+import { Button } from '@sankara-ui/core'
+
+<Button className="btn btn-primary">Termin vereinbaren</Button>
+<Button className="btn btn-primary" type="submit">Absenden</Button>
+```
+
+`type="button"` is the default deliberately: an untyped `<button>` inside a
+`<form>` submits it, which is the single most common accidental-submit bug.
+Opt into `type="submit"` when you mean it.
+
+### Rendering as a link
+
+`render` takes an element and the component becomes it, keeping your props:
+
+```tsx
+import Link from 'next/link'
+
+<Button className="btn btn-primary" render={<Link href="/kontakt" />}>
+  Kontakt
+</Button>
+
+<Button className="btn btn-primary" render={<SbLink link={blok.link} />}>
+  {blok.label}
+</Button>
+```
+
+The package imports neither `next/link` nor anything Storyblok — you pass the
+element, so your own CMS link helper works unchanged.
+
+Element-specific props (`href`, `target`, `ref`, …) go on the element you pass,
+not on `Button`. Where both sides set the same thing, `className` and `style`
+merge, both `onClick` handlers run with `Button`'s first, `Button`'s `children`
+win, and everything else is yours. A fragment or a list throws. A custom
+component has to forward unknown props to a real element — one that swallows
+them renders unstyled, and nothing can detect that before it renders.
+
+Keep interactive elements out of `children`. A link inside a button, or a button
+inside a rendered link, is invalid HTML and breaks keyboard and screen-reader
+behaviour. The component renders what you give it and cannot check this.
+
+### Disabled
+
+`disabled` works on a real `<button>` and nowhere else, where the platform
+removes it from the tab order and blocks activation with no JavaScript. Passing
+it alongside a link `render` logs an error in development and does nothing: a
+disabled `<a>` does not exist in HTML, and `aria-disabled` on a still-operable
+link tells assistive technology something untrue. Don't render the link instead.
+
+### Focus and styling
+
+The focus ring is `outline: 2px solid var(--color-focus)`, offset from the
+control, and appears for keyboard users only. Override `--color-focus` in your
+own `@theme`; it defaults to `--color-primary`.
+
+The component's own rules live in `@layer components`, so any Tailwind utility
+you put on it wins — assuming your stylesheet keeps Tailwind's standard layer
+order, which `@import "tailwindcss"` sets up.
+
 ## Disclosure
 
 Native `<details>`/`<summary>` — a server component that ships no JavaScript.
