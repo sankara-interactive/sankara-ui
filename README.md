@@ -122,7 +122,9 @@ Element-specific props (`href`, `target`, `ref`, …) go on the element you pass
 not on `Button`. `className` and `style` merge rather than replace, and on a
 colliding key the render element's own value wins; both `onClick` handlers run
 with `Button`'s first; `Button`'s `children` replace the render element's; and
-everything else is the render element's own. A fragment or a list throws. A
+everything else is the render element's own. `disabled` is the one exception —
+`Button`'s value wins when you set it, and the element's own applies when you
+do not. A fragment or a list throws. A
 custom component has to forward unknown props to a real element — one that
 swallows them renders unstyled, and nothing can detect that before it renders.
 
