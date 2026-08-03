@@ -304,6 +304,91 @@ Not testable in jsdom, and stated rather than faked: `:focus-visible` ring
 rendering, and its contrast against a real page background. Both belong in the
 browser pass, together with a `forced-colors` check.
 
+## Verification
+
+Run 2026-08-03 against the Task 3 Storybook build (`Button--Default`,
+`Button--AsLink`, `Button--Submit`, `Button--Disabled`), on **Chrome
+150.0.7871.115 on macOS 26.5.2** — confirmed via
+`navigator.userAgentData.getHighEntropyValues`, not the `navigator.userAgent`
+string alone. One engine only; see below for what this does not cover.
+
+Two automation paths were needed, both against the same Chrome build, for the
+same reason `Popover`'s verification needed them: the `claude-in-chrome`
+extension's automated tab reports `visibilityState: "hidden"`, and
+`:focus-visible` in this Chrome build does **not** match a plain
+programmatic `.focus()` — confirmed directly (see the first row below), so
+every focus-dependent check used real, OS-level `Tab`/`Enter`/click input
+dispatched through the `computer` tool, never `element.focus()` or a
+synthetic `dispatchEvent`. `forced-colors: active` has no equivalent in that
+extension's `emulate` surface, so a Playwright-controlled page of the same
+Chrome build (`page.emulateMedia({ forcedColors: 'active' })`) was used for
+that one check only.
+
+One methodology error surfaced and is recorded rather than hidden: an early
+disabled-button test called both `b.click()` and
+`b.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true}))` in
+the same pass and read `clicked: true`. Isolating the two calls showed
+`b.click()` alone correctly did nothing; the manual `dispatchEvent` was the
+cause, because dispatching a synthetic event straight at an element delivers
+it to listeners regardless of `disabled` — the platform's disabled-guard
+applies to genuine activation (`click()`, a real click, a real key press), not
+to a script handing an event object directly to `dispatchEvent`. The
+retest below used only `.click()` and a real OS-level click, neither of which
+fired the handler.
+
+| Check | Chrome 150 |
+| --- | --- |
+| Programmatic `.focus()` does not satisfy `:focus-visible` | fail-as-expected — `b.focus()`: `activeElement` was the button, `b.matches(':focus-visible')` was `false`, `outline-style: none`. Confirms the brief's warning; real keyboard input was used for every check below instead |
+| Real keyboard `Tab` focus matches `:focus-visible` and produces the ring | pass — after a real `Tab` keypress: `matches(':focus-visible')` `true`, `outline-color: oklch(0.55 0.22 275)`, `outline-width: 2px`, `outline-style: solid`, `outline-offset: 2px` |
+| Ring visible against the **page**, not just the button (D5's central concern) | pass, both buttons in `Default` — primary (`bg-primary`, indigo): ring `oklch(0.55 0.22 275)` vs `background-color: oklch(0.55 0.22 275)` (button) vs page background; secondary (bordered, transparent bg): ring `oklch(0.55 0.22 275)` vs `background-color: rgba(0,0,0,0)` (button) vs `border-color: oklch(0.55 0.02 275)` (muted grey). `getComputedStyle(document.body).backgroundColor` is `rgba(0, 0, 0, 0)` on both — the Storybook iframe sets no explicit page background — so the ring was also checked against the *rendered* pixel colour, not just the computed style: screenshots of both focus states (below) show a solid indigo ring sitting clearly outside each button's edge against the rendered-white canvas. No collision in either case |
+| Token resolution | `--color-focus: oklch(55% .22 275)`, `--color-primary: oklch(55% .22 275)` — equal, as D5 specifies |
+| `forced-colors: active` still shows a focus indicator | pass (Playwright, same Chrome build) — `matchMedia('(forced-colors: active)').matches` `true`; button forced to `background-color: rgb(255, 255, 255)`, `color: rgb(0, 0, 0)` (Canvas/CanvasText); focus outline still present: `outline-style: solid`, `outline-width: 2px`, `outline-offset: 2px`, `outline-color: rgba(5, 0, 73, 0.8)` — distinct from the forced white button background |
+| `button--disabled`: not focusable by keyboard | pass — real `Tab` from a blank click skipped the button entirely; `document.activeElement` stayed on `<body>` |
+| `button--disabled`: does not fire on `.click()` | pass (isolated) — `b.click()` alone: click handler did not run |
+| `button--disabled`: does not fire on a real, trusted mouse click | pass — OS-level click at the button's coordinates: click handler did not run |
+| `button--disabled`: exposed as disabled | pass — `disabled: true`, `getAttribute('disabled') === ''`, `matches(':disabled')` `true`, `getAttribute('aria-disabled')` `null` (D3: native attribute only, no ARIA) |
+| `button--as-link`: renders an `<a>` carrying `sankara-button` | pass — `tagName: "A"`, `className: "sankara-button rounded-card bg-primary px-5 py-2.5 font-medium text-primary-contrast"`, `href="#kontakt"` |
+| `button--as-link`: not underlined | pass — `text-decoration-line: none` |
+| `button--as-link`: activates on `Enter` | pass — real `Tab` to the link, then real `Enter`: tab URL gained `#kontakt` |
+| `button--submit`: `type="submit"` button submits the form | pass — real OS-level click on "Absenden": the form's `submit` listener count went from 0 to 1 |
+| `button--submit`: the plain button does not submit | pass — real OS-level click on "Zurücksetzen (kein submit)": the button received focus (confirming the click landed), submit listener count stayed at 0 |
+
+Two full-page screenshots were taken during the real-`Tab`-focus checks above
+(not saved into the repo, viewed inline during the run) confirming the ring
+visually: the primary (indigo-filled) button showed a solid indigo ring
+sitting outside its edge against the white page, and the secondary
+(white, grey-bordered) button showed the same indigo ring outside its edge
+against the same white page. Neither ring blended into the button it
+surrounded or the page behind it.
+
+**Unobserved, explicitly:**
+
+- Real Safari and real Firefox — one engine only, as above. `outline` and
+  `:focus-visible` are broadly interoperable, but the forced-colors palette
+  in particular (`AccentColor`/`ButtonText` equivalents) is UA- and OS-defined
+  and was only observed in Chromium's own approximation.
+- A real screen-reader session. This run inspected the accessibility-relevant
+  attributes directly (`disabled`, `aria-disabled`, `:disabled`), never an
+  actual AT's announcement.
+- The AT announcement of the disabled state — D3 argues from the platform
+  contract (native `disabled` is exposed, removed from the tab order, and
+  blocked from activation), not from hearing a screen reader announce it on
+  this button.
+- `render={<button/>}` (D4) and a custom-component `render` — the Storybook
+  stories only exercise the default `<button>` and a plain `<a>`; the D4
+  branch and the "custom component swallows props" case are covered by the
+  Vitest suite, not this browser pass.
+- High-contrast/forced-colors on an actual Windows machine with a real user
+  contrast theme — the Playwright `emulateMedia` result matches the media
+  query and one Chromium-computed approximation of the palette, not an OS
+  reference implementation.
+
+Nothing here contradicts a decision in this document. The one result worth
+calling out is the first row: `:focus-visible` genuinely does not match a
+bare `.focus()` in this Chrome build, which is exactly why the brief insisted
+on real keyboard input for this check — a verification pass that used
+`.focus()` alone would have wrongly reported no ring at all.
+
 ## Risks and open questions
 
 - **`cloneElement` cannot guarantee what it clones.** A custom component that
