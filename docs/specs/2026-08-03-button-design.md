@@ -312,17 +312,16 @@ Run 2026-08-03 against the Task 3 Storybook build (`Button--Default`,
 `navigator.userAgentData.getHighEntropyValues`, not the `navigator.userAgent`
 string alone. One engine only; see below for what this does not cover.
 
-Two automation paths were needed, both against the same Chrome build, for the
-same reason `Popover`'s verification needed them: the `claude-in-chrome`
-extension's automated tab reports `visibilityState: "hidden"`, and
+Two automation paths were used, both against the same Chrome build.
 `:focus-visible` in this Chrome build does **not** match a plain
 programmatic `.focus()` — confirmed directly (see the first row below), so
 every focus-dependent check used real, OS-level `Tab`/`Enter`/click input
-dispatched through the `computer` tool, never `element.focus()` or a
-synthetic `dispatchEvent`. `forced-colors: active` has no equivalent in that
-extension's `emulate` surface, so a Playwright-controlled page of the same
-Chrome build (`page.emulateMedia({ forcedColors: 'active' })`) was used for
-that one check only.
+dispatched through the `claude-in-chrome` extension's `computer` tool, never
+`element.focus()` or a synthetic `dispatchEvent`. `forced-colors: active` has
+no equivalent in that extension's `emulate` surface, so a
+Playwright-controlled page of the same Chrome build
+(`page.emulateMedia({ forcedColors: 'active' })`) was used for that one check
+only.
 
 One methodology error surfaced and is recorded rather than hidden: an early
 disabled-button test called both `b.click()` and
