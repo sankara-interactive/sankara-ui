@@ -9,4 +9,5 @@ export const TOKENS = [
   '--shadow-raised',
   '--duration-expand',
   '--color-backdrop',
+  '--color-focus',
 ] as const

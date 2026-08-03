@@ -45,6 +45,7 @@ of them in your own `@theme` block, after the import:
 | `--shadow-raised` | Elevation for raised surfaces |
 | `--duration-expand` | Open/close duration for `Disclosure` and `Dialog` |
 | `--color-backdrop` | `::backdrop` behind an open `Dialog` |
+| `--color-focus` | Focus ring on `Button`, defaults to `--color-primary` |
 
 ## Icons
 
