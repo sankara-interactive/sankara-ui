@@ -24,15 +24,19 @@ export type ButtonProps = SharedProps &
   AriaAttributes & {
     children: ReactNode
     /** Render as something else — next/link, an SbLink, a plain <a>. Cloned,
-        not wrapped. Element-specific props go on this element. */
-    render?: ReactElement
+        not wrapped. Element-specific props go on this element. `null` and
+        `false` — what a JSX conditional (`cond ? <X/> : null`) produces —
+        are treated the same as omitting `render`, falling back to the
+        default <button>. */
+    render?: ReactElement | null | false
     /** Native attribute. A no-op with a non-button `render`, which errors in
         development. */
     disabled?: boolean
     type?: 'button' | 'submit' | 'reset'
     className?: string
     /** Applies to the default <button>. With `render`, put the ref on your own
-        element — cloneElement replaces a ref rather than composing it. */
+        element — cloneElement replaces a ref rather than composing it, and
+        Button errors in development if both are set. */
     ref?: Ref<HTMLButtonElement>
   } & { [key: `data-${string}`]: string | number | boolean | undefined }
 
@@ -41,13 +45,35 @@ type RenderProps = {
   style?: CSSProperties
   onClick?: (event: MouseEvent<HTMLElement>) => void
   type?: 'button' | 'submit' | 'reset'
+  disabled?: boolean
+}
+
+// Reaches through `memo`/`forwardRef` wrappers (`.type`/`.render`) to the
+// underlying function so next/link and similar wrapped components still get
+// named in the dev warning below, instead of producing a blank name.
+function unwrapDisplayName(type: unknown): string {
+  if (typeof type === 'function') {
+    return (
+      (type as { displayName?: string; name?: string }).displayName ||
+      (type as { name?: string }).name ||
+      ''
+    )
+  }
+  if (type && typeof type === 'object') {
+    const wrapper = type as { displayName?: string; type?: unknown; render?: unknown }
+    return (
+      wrapper.displayName ||
+      unwrapDisplayName(wrapper.type) ||
+      unwrapDisplayName(wrapper.render) ||
+      ''
+    )
+  }
+  return ''
 }
 
 function describeElement(type: ReactElement['type']): string {
   if (typeof type === 'string') return `<${type}>`
-  return (type as { displayName?: string; name?: string }).displayName ??
-    (type as { name?: string }).name ??
-    'a custom component'
+  return unwrapDisplayName(type) || 'a custom component'
 }
 
 export function Button({
@@ -61,9 +87,20 @@ export function Button({
   ref,
   ...props
 }: ButtonProps) {
-  if (render !== undefined && (!isValidElement(render) || render.type === Fragment)) {
+  // `render` is truthy-checked, not `!== undefined`: `null` and `false` — what
+  // a JSX conditional produces for "no render" — fall through to the default
+  // branch below rather than hitting this guard. A string or a number is
+  // still truthy and still invalid, so it still throws.
+  if (render && (!isValidElement(render) || render.type === Fragment)) {
     throw new Error(
       'Button: `render` must be a single element (an <a>, a Link, a <button>), not a fragment or a list.'
+    )
+  }
+
+  if (process.env.NODE_ENV !== 'production' && ref && render) {
+    console.error(
+      'Button: `ref` is ignored when `render` is set — cloneElement replaces a ref rather than ' +
+        'composing it. Put the ref on your own element instead.'
     )
   }
 
@@ -87,8 +124,12 @@ export function Button({
   // Reliable for an intrinsic element, impossible for a custom component: one
   // that renders a <button> is treated as a link. Documented in the spec's D4.
   const isNativeButton = render.type === 'button'
+  // Either side can carry it: Button's own `disabled` prop, or the render
+  // element's own (e.g. `render={<button disabled />}` or a mistaken
+  // `render={<a disabled />}`). Checking only Button's prop missed the latter.
+  const wantsDisabled = disabled ?? renderProps.disabled
 
-  if (process.env.NODE_ENV !== 'production' && disabled && !isNativeButton) {
+  if (process.env.NODE_ENV !== 'production' && wantsDisabled && !isNativeButton) {
     console.error(
       `Button: \`disabled\` does nothing on ${describeElement(render.type)}. A disabled link is not ` +
         'a thing in HTML — do not render the link instead of disabling it.'
@@ -113,8 +154,11 @@ export function Button({
     style: { ...style, ...renderProps.style },
     onClick: composedClick,
     children,
-    ...(isNativeButton
-      ? { type: renderProps.type ?? type ?? 'button', disabled }
-      : {}),
+    // Only a real <button> gets `disabled` — on anything else it must reach
+    // neither the render element's own value nor Button's, explicit
+    // `undefined` so cloneElement strips whatever the render element's own
+    // props carried (e.g. `render={<a disabled />}`) rather than leaving it.
+    disabled: isNativeButton ? wantsDisabled : undefined,
+    ...(isNativeButton ? { type: renderProps.type ?? type ?? 'button' } : {}),
   } as Partial<RenderProps> & { children: ReactNode })
 }

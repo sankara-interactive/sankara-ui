@@ -1,3 +1,4 @@
+import { forwardRef, type ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -53,10 +54,10 @@ describe('Button render branch', () => {
     expect(screen.getByRole('link')).not.toHaveAttribute('type')
   })
 
-  it('merges className and style rather than replacing them', () => {
+  it('merges className and style, the render element winning on a colliding key', () => {
     render(
-      <Button className="from-button" style={{ color: 'red' }}
-              render={<a href="/x" className="from-render" style={{ margin: '4px' }} />}>
+      <Button className="from-button" style={{ color: 'red', margin: '4px' }}
+              render={<a href="/x" className="from-render" style={{ color: 'blue' }} />}>
         Kontakt
       </Button>
     )
@@ -64,7 +65,10 @@ describe('Button render branch', () => {
     expect(link.className).toContain('sankara-button')
     expect(link.className).toContain('from-render')
     expect(link.className).toContain('from-button')
-    expect(link.style.color).toBe('red')
+    // `color` collides: the render element's own value wins.
+    expect(link.style.color).toBe('blue')
+    // `margin` is disjoint: Button's value still comes through, proving this
+    // is a merge and not a replacement.
     expect(link.style.margin).toBe('4px')
   })
 
@@ -100,6 +104,14 @@ describe('Button render={<button/>}', () => {
     expect(button).toBeDisabled()
     expect(button.className).toContain('mine')
   })
+
+  it('preserves the render element’s own disabled when Button does not set it', () => {
+    // Regression: cloneElement's config wrote `disabled: disabled` (Button's
+    // own, undefined here) unconditionally, overwriting the render element's
+    // own `disabled` with undefined and shipping an enabled button.
+    render(<Button render={<button disabled />}>Speichern</Button>)
+    expect(screen.getByRole('button')).toBeDisabled()
+  })
 })
 
 describe('Button guards', () => {
@@ -113,10 +125,50 @@ describe('Button guards', () => {
     expect(link).not.toHaveAttribute('aria-disabled')
   })
 
+  it('errors and strips disabled when only the render element sets it', () => {
+    // Regression: the guard only inspected Button's own `disabled` prop, so
+    // this route logged nothing and let `disabled` reach the <a> unchanged.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const linkProps = { href: '/x', disabled: true }
+    render(<Button render={<a {...linkProps} />}>Kontakt</Button>)
+    const link = screen.getByRole('link')
+    expect(error).toHaveBeenCalledOnce()
+    expect(String(error.mock.calls[0]?.[0])).toMatch(/disabled/i)
+    expect(link).not.toHaveAttribute('disabled')
+    expect(link).not.toHaveAttribute('aria-disabled')
+  })
+
   it('throws on a fragment render', () => {
     expect(() =>
       render(<Button render={<><a href="/a" /><a href="/b" /></>}>Kontakt</Button>)
     ).toThrow(/single element/i)
+  })
+
+  it('still throws when render is a genuinely invalid non-element', () => {
+    // Guards against a fix that's too permissive: only null/false/undefined
+    // should skip the guard, not any other falsy-adjacent input.
+    const BadButton = Button as (props: { render?: unknown; children?: unknown }) => ReactNode
+    expect(() => render(<BadButton render="nope">Kontakt</BadButton>)).toThrow(/single element/i)
+  })
+
+  it('falls back to the default button when render is null', () => {
+    render(<Button render={null}>Speichern</Button>)
+    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('falls back to the default button when render is false', () => {
+    render(<Button render={false}>Speichern</Button>)
+    expect(screen.getByRole('button')).toBeInTheDocument()
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('errors in development when a ref is passed alongside render', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ref = { current: null as HTMLButtonElement | null }
+    render(<Button ref={ref} render={<a href="/x" />}>Kontakt</Button>)
+    expect(error).toHaveBeenCalledOnce()
+    expect(String(error.mock.calls[0]?.[0])).toMatch(/ref/i)
   })
 
   it('renders unstyled when a custom component swallows props', () => {
@@ -124,5 +176,39 @@ describe('Button guards', () => {
     const Swallower = () => <a href="/x">Kontakt</a>
     render(<Button render={<Swallower />}>Kontakt</Button>)
     expect(screen.getByRole('link').className).toBe('')
+  })
+})
+
+describe('Button guards — describeElement naming', () => {
+  it('names a plain custom component in the disabled error message', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    function CustomLink(props: { disabled?: boolean; href?: string }) {
+      return <a {...props} />
+    }
+    render(<Button disabled render={<CustomLink href="/x" />}>Kontakt</Button>)
+    expect(String(error.mock.calls[0]?.[0])).toContain('CustomLink')
+  })
+
+  it('unwraps a forwardRef component to name it in the disabled error message', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const ForwardedLink = forwardRef<HTMLAnchorElement, { disabled?: boolean; href?: string }>(
+      function ForwardedLink(props, ref) {
+        return <a ref={ref} {...props} />
+      }
+    )
+    render(<Button disabled render={<ForwardedLink href="/x" />}>Kontakt</Button>)
+    expect(String(error.mock.calls[0]?.[0])).toContain('ForwardedLink')
+  })
+
+  it('falls back to a generic label for an anonymous component, never a blank name', () => {
+    // Regression: `??` does not fall through an empty string, so an anonymous
+    // function's blank `.name` produced "...does nothing on ." with nothing
+    // naming the element.
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const Anonymous = (() => (props: { disabled?: boolean; href?: string }) => <a {...props} />)()
+    render(<Button disabled render={<Anonymous href="/x" />}>Kontakt</Button>)
+    const message = String(error.mock.calls[0]?.[0])
+    expect(message).toContain('a custom component')
+    expect(message).not.toMatch(/does nothing on \.$/)
   })
 })
