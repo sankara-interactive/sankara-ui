@@ -119,11 +119,20 @@ The package imports neither `next/link` nor anything Storyblok — you pass the
 element, so your own CMS link helper works unchanged.
 
 Element-specific props (`href`, `target`, `ref`, …) go on the element you pass,
-not on `Button`. Where both sides set the same thing, `className` and `style`
-merge, both `onClick` handlers run with `Button`'s first, `Button`'s `children`
-win, and everything else is yours. A fragment or a list throws. A custom
-component has to forward unknown props to a real element — one that swallows
-them renders unstyled, and nothing can detect that before it renders.
+not on `Button`. `className` and `style` merge rather than replace, and on a
+colliding key the render element's own value wins; both `onClick` handlers run
+with `Button`'s first; `Button`'s `children` replace the render element's; and
+everything else is the render element's own. A fragment or a list throws. A
+custom component has to forward unknown props to a real element — one that
+swallows them renders unstyled, and nothing can detect that before it renders.
+
+`type` and `disabled` only ever apply to a literal `<button>` element or to the
+default branch (no `render` at all). A custom component that renders a
+`<button>` internally still gets neither — `Button` cannot see through
+`render` to what the component ultimately renders, so it is treated as a link:
+no `type="button"`, and it can submit an enclosing form by accident. Nothing
+can detect this at runtime, so avoid wrapping a `<button>` in a component you
+hand to `render` when either matters.
 
 Keep interactive elements out of `children`. A link inside a button, or a button
 inside a rendered link, is invalid HTML and breaks keyboard and screen-reader
