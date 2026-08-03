@@ -34,7 +34,11 @@ describe('button stylesheet', () => {
   it('draws a focus ring from the token, not from currentColor', () => {
     const focus = css.match(/\.sankara-button:focus-visible \{[^}]*\}/s)?.[0] ?? ''
     expect(focus).toContain('outline: 2px solid var(--color-focus)')
-    expect(focus).toContain('outline-offset')
+    // The value, not just the property: an offset must draw the ring outward
+    // against the page, not inward against the button — `-2px` would still
+    // `toContain('outline-offset')` while recreating the invisibility bug
+    // --color-focus was introduced to fix.
+    expect(focus).toContain('outline-offset: 2px')
     // An outline sits outside the control, against the page — currentColor
     // would be invisible whenever the button's text matches the page.
     expect(focus).not.toContain('currentColor')
