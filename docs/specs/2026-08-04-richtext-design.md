@@ -488,15 +488,15 @@ Methodology, updated from round 1: the `claude-in-chrome` automated tab still
 reports `visibilityState: "hidden"`, so `requestAnimationFrame` was never
 awaited; every measurement is a synchronous `getComputedStyle` or box-geometry
 read (the recorded geometry is box width/height and `scrollWidth`/
-`clientWidth`) after forcing layout with `document.body.offsetHeight`. `resize_window` again never moved
-`window.innerWidth` in the automated tab — this session's tab was fixed at
-`320×692` throughout, regardless of the size requested — so narrow-viewport
-checks used the fixed `320px` viewport directly (no artificial narrowing
-needed) or a further-narrowed containing block via inline `max-width` on
-`body`, and the **wide**-viewport clamp reading used a same-origin `<iframe>`
-set `1600px` wide and injected into the page: `vw` units resolve against an
-iframe's own initial containing block, so this is a real, distinct viewport
-width for CSS purposes, not a simulation.
+`clientWidth`) after forcing layout with `document.body.offsetHeight`.
+`resize_window` again never moved `window.innerWidth` in the automated tab —
+this session's tab was fixed at `320×692` throughout, regardless of the size
+requested — so narrow-viewport checks used the fixed `320px` viewport
+directly (no artificial narrowing needed) or a further-narrowed containing
+block via inline `max-width` on `body`, and the **wide**-viewport clamp
+reading used a same-origin `<iframe>` set `1600px` wide and injected into the
+page: `vw` units resolve against an iframe's own initial containing block, so
+this is a real, distinct viewport width for CSS purposes, not a simulation.
 
 **Central check, re-run:**
 
@@ -535,7 +535,7 @@ with a preflight type selector:**
 | `hr` border | pass — `border-top: 1px solid`, `richtext--default` story, both rounds |
 | `blockquote` border | pass — `border-inline-start: 2px solid`, `richtext--default` story, both rounds |
 | `blockquote` padding | pass — `padding-inline-start: 16px`, `richtext--default` story, round 1 only; not re-queried in round 2, no reason to expect the fix touched it |
-| D6 measure, the CSS property | pass — `max-inline-size: 685.312px` (`68ch` at `16px`/system-ui) on a paragraph in the project-override fixture, both rounds. That paragraph is the only element the measure was ever read on; no list, heading or other text child carries a recorded reading in either round |
+| D6 measure, the CSS property | pass — `max-inline-size: 685.312px` (`68ch` at `16px`/system-ui) on a paragraph in the project-override fixture: round 1's fixture reading; round 2's report restates the same value in prose without printing a fresh reading. That paragraph is the only element the measure was ever read on; no list, heading or other text child carries a recorded reading in either round |
 | D6 measure in a containing block wide enough for it to bite, with `table`/container measured unconstrained | pass — round 1 only: at that session's `1720px` viewport (wider than the `68ch` measure), the paragraph's `max-inline-size` computed to `685.3125px` while the table and the container both *measured* `1720px` wide — genuinely unconstrained, not merely wide. The paragraph's own rendered box width was never read, in either round, so what is on record is the property in force beside measured-unconstrained siblings, not a measured narrow paragraph. Round 2's session viewport (`320px`) was already narrower than the measure, so the container capped the paragraph before the measure could; only the property value was reconfirmed there |
 | D7 flow spacing: every child but the first gets `margin-block-start: var(--richtext-flow)`, including around the table | pass — `richtext--default` story, both rounds: first child `0px`, every subsequent child `16px` (10 children, round 2; matches round 1's identical reading of the same story). No raw fixture carries this measurement in either round — the `h2, ul, ol, p, table` fixture was used for font-size, marker, link and table-border checks in round 2, not for flow spacing |
 | List rhythm: `li + li` and `li > ul` get `0.25em` | pass — `richtext--default` story, round 1 only (`4px` at `16px` font, both selectors); not re-queried in round 2, no reason to expect the fix touched it |
@@ -545,7 +545,7 @@ not a stand-in font-size:**
 
 | Check | Result |
 | --- | --- |
-| Long compound ("Unternehmensnachfolge") at its real `24px` clamp size, narrowed to a `160px` box, `lang="de"` | pass — wrapped to 2 lines (`57.59px` = `2 × 28.8px` line-height). `overflow-wrap`/`word-break` were not re-read at this size; round 1 read both as `normal` on the same fixture's heading at its `48px` stand-in size, and that is the only recorded evidence that nothing but `hyphens: auto` can produce the break |
+| Long compound ("Unternehmensnachfolge") at its real `24px` clamp size, narrowed to a `160px` box, `lang="de"` | pass — wrapped to 2 lines (`57.59px` = `2 × 28.8px` line-height). Neither `overflow-wrap` nor `word-break` was re-read on this element — round 2 recorded `overflow-wrap: normal` only on the `richtext--narrow-column` story's `h2`, and did not read `word-break` at all; round 1 read both as `normal` on the project-override fixture's heading at its `48px` stand-in size, and that is the only recorded evidence that nothing but `hyphens: auto` can produce the break |
 | Same heading, `lang` removed from the ancestor | pass — back to 1 line (`28.8px`); `scrollWidth − clientWidth = 110px`, i.e. overflows instead of breaking |
 | Short word ("unsere", 6 chars, under the `14`-char `hyphenate-limit-chars` floor), `lang="de"`, `30px` box | pass — stayed on one line (`28.8px`), overflowed by `45px` — Chrome 150 still honours the `14`-character floor at the corrected font size |
 | **`richtext--narrow-column` story** — the story whose purpose is to demonstrate this | **pass, now** — wrapper is `288px` wide (`18rem` minus `p-8` padding = `224px` content), `h2` computed `24px`/`600` (the real clamp floor, not body copy), and wraps to 2 lines (`57.59px` height = `2 × 28.8px`). Round 1 measured this story rendering the heading as one line at `16px` because the clamp never applied; round 2 confirms the fix reaches this story specifically, not just the fixtures. |
