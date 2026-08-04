@@ -45,6 +45,7 @@ of them in your own `@theme` block, after the import:
 | `--shadow-raised` | Elevation for raised surfaces |
 | `--duration-expand` | Open/close duration for `Disclosure` and `Dialog` |
 | `--color-backdrop` | `::backdrop` behind an open `Dialog` |
+| `--color-focus` | Focus ring on `Button`, defaults to `--color-primary` |
 
 ## Icons
 
@@ -80,6 +81,82 @@ import { Carousel } from '@sankara-ui/core'
 
 Static scroll-snap only. Autoplay, looping and synced carousels are not
 included yet.
+
+## Button
+
+Correctness, not appearance. `Button` gives you `type="button"` by default, one
+prop to render as a link, native `disabled`, and a focus ring — and no colours,
+padding or radius, because every project's differ. Bring your own classes.
+
+```tsx
+import { Button } from '@sankara-ui/core'
+
+<Button className="btn btn-primary">Termin vereinbaren</Button>
+<Button className="btn btn-primary" type="submit">Absenden</Button>
+```
+
+`type="button"` is the default deliberately: an untyped `<button>` inside a
+`<form>` submits it, which is the single most common accidental-submit bug.
+Opt into `type="submit"` when you mean it.
+
+### Rendering as a link
+
+`render` takes an element and the component becomes it, keeping your props:
+
+```tsx
+import Link from 'next/link'
+
+<Button className="btn btn-primary" render={<Link href="/kontakt" />}>
+  Kontakt
+</Button>
+
+<Button className="btn btn-primary" render={<SbLink link={blok.link} />}>
+  {blok.label}
+</Button>
+```
+
+The package imports neither `next/link` nor anything Storyblok — you pass the
+element, so your own CMS link helper works unchanged.
+
+Element-specific props (`href`, `target`, `ref`, …) go on the element you pass,
+not on `Button`. `className` and `style` merge rather than replace, and on a
+colliding key the render element's own value wins; both `onClick` handlers run
+with `Button`'s first; `Button`'s `children` replace the render element's; and
+everything else is the render element's own. `disabled` is the one exception —
+`Button`'s value wins when you set it, and the element's own applies when you
+do not. A fragment or a list throws. A
+custom component has to forward unknown props to a real element — one that
+swallows them renders unstyled, and nothing can detect that before it renders.
+
+`type` and `disabled` only ever apply to a literal `<button>` element or to the
+default branch (no `render` at all). A custom component that renders a
+`<button>` internally still gets neither — `Button` cannot see through
+`render` to what the component ultimately renders, so it is treated as a link:
+no `type="button"`, and it can submit an enclosing form by accident. Nothing
+can detect this at runtime, so avoid wrapping a `<button>` in a component you
+hand to `render` when either matters.
+
+Keep interactive elements out of `children`. A link inside a button, or a button
+inside a rendered link, is invalid HTML and breaks keyboard and screen-reader
+behaviour. The component renders what you give it and cannot check this.
+
+### Disabled
+
+`disabled` works on a real `<button>` and nowhere else, where the platform
+removes it from the tab order and blocks activation with no JavaScript. Passing
+it alongside a link `render` logs an error in development and does nothing: a
+disabled `<a>` does not exist in HTML, and `aria-disabled` on a still-operable
+link tells assistive technology something untrue. Don't render the link instead.
+
+### Focus and styling
+
+The focus ring is `outline: 2px solid var(--color-focus)`, offset from the
+control, and appears for keyboard users only. Override `--color-focus` in your
+own `@theme`; it defaults to `--color-primary`.
+
+The component's own rules live in `@layer components`, so any Tailwind utility
+you put on it wins — assuming your stylesheet keeps Tailwind's standard layer
+order, which `@import "tailwindcss"` sets up.
 
 ## Disclosure
 

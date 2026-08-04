@@ -8,6 +8,7 @@
   --shadow-raised: 0 16px 40px rgb(0 0 0 / 0.18);
   --duration-expand: 0.3s;
   --color-backdrop: rgb(0 0 0 / 0.5);
+  --color-focus: var(--color-primary);
 }
 
 @layer components {
@@ -224,3 +225,28 @@
   .sankara-popover-trigger:has(+ [popover]:popover-open),
   .sankara-popover-trigger:has(+ [popover]:popover-open) *
 ));
+
+/* Button structure. Everything here is layout or interaction; the skin —
+   padding, radius, colour, weight, shadow, transition — differs in every
+   project surveyed, and a package default would be something consumers fight
+   rather than build on. Layered for the reason spelled out at .sankara-popover:
+   an unlayered rule beats Tailwind's utilities outright. */
+@layer components {
+  .sankara-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    /* The component renders links; without this the UA underlines them. */
+    text-decoration: none;
+  }
+
+  /* outline-offset draws the ring outside the control, so it sits against the
+     page rather than the button — currentColor would vanish whenever the two
+     match. The token defaults to --color-primary and is overridable. */
+  .sankara-button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
