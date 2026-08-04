@@ -317,9 +317,10 @@ wins, and so does any Tailwind utility. Tune the rest with the
 ### Measure
 
 `measure` constrains text to `--richtext-measure` (`68ch`) and is on by default.
-It applies to the text children, not the container, so tables, images and
-anything marked `data-wide` still use the full width. Pass `measure={false}` to
-drop it. It sets width only — centre the column yourself if you want that.
+It applies to the text children, not the container, so tables, figures, images,
+video, iframes and anything marked `data-wide` still use the full width. Pass
+`measure={false}` to drop it. It sets width only — centre the column yourself
+if you want that.
 
 `ch` is the width of a "0" in your typeface, so `68ch` is a different line length
 in every brand. Lower the token if your face is wide.
