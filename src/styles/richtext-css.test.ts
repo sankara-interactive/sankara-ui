@@ -14,7 +14,7 @@ const ruleFor = (selector: string) => {
 }
 
 describe('rich text stylesheet', () => {
-  it('wraps every selector token in :where() so a project rule outranks it', () => {
+  it('wraps the container in :where() and leaves element tokens bare, tying preflight and a project rule in turn', () => {
     const selectorLines = block
       .split('\n')
       .filter(line => /^\s*[.:[]/.test(line) && line.includes('{'))
@@ -22,7 +22,7 @@ describe('rich text stylesheet', () => {
 
     // Split a selector into its top-level compound selectors, i.e. break on
     // combinators (descendant space, >, +, ~) and list-separating commas —
-    // but only outside parens, since :where(li > ul, li > ol) has commas and
+    // but only outside parens, since :is(li > ul, li > ol) has commas and
     // combinators that are arguments, not structure, of the outer selector.
     const splitTopLevel = (selector: string): string[] => {
       const segments: string[] = []
@@ -42,11 +42,9 @@ describe('rich text stylesheet', () => {
       return segments
     }
 
-    // A compound selector is safe if it's the universal selector (already
-    // zero specificity, nothing to gain by wrapping it) or if a single
-    // :where(...) call wraps the entire thing — not just its opening token.
-    const isWrapped = (segment: string): boolean => {
-      if (segment === '*') return true
+    // True only if a single :where(...) call wraps the entire segment — not
+    // just its opening token.
+    const isWrappedInWhere = (segment: string): boolean => {
       if (!segment.startsWith(':where(')) return false
       let depth = 0
       for (let i = 0; i < segment.length; i++) {
@@ -59,13 +57,26 @@ describe('rich text stylesheet', () => {
       return false
     }
 
-    const unwrapped = selectorLines.flatMap(line =>
-      splitTopLevel(line).filter(segment => !isWrapped(segment))
-    )
-    // Naming the offending token(s), not just failing a boolean: a bare tag,
-    // class or attribute selector here raises the rule's specificity, which
-    // is the one thing @layer base + :where() exists to prevent.
-    expect(unwrapped).toEqual([])
+    // The container (the first compound selector, the sankara-richtext(-measure)
+    // class) must be :where()-wrapped so the class itself adds zero
+    // specificity. Every element token after it (h2, :is(h5, h6), ...) must
+    // stay bare — re-wrapping it in :where() would drop the rule back to
+    // (0,0,0), which loses outright to preflight's own (0,0,1) base-layer
+    // resets. Named per violation, not just a boolean.
+    const violations = selectorLines.flatMap(line => {
+      const [container, ...elementTokens] = splitTopLevel(line)
+      const found: string[] = []
+      if (container !== undefined && !isWrappedInWhere(container)) {
+        found.push(`container not wrapped in :where(): ${container}`)
+      }
+      for (const token of elementTokens) {
+        if (isWrappedInWhere(token)) {
+          found.push(`element token re-wrapped in :where(): ${token}`)
+        }
+      }
+      return found
+    })
+    expect(violations).toEqual([])
   })
 
   it('spaces blocks with a logical margin on the owl selector', () => {
@@ -80,7 +91,7 @@ describe('rich text stylesheet', () => {
     ['h3', '--richtext-h3'],
     ['h4', '--richtext-h4'],
   ])('sizes %s from %s and restores its weight', (tag, token) => {
-    const rule = ruleFor(`:where(.sankara-richtext) :where(${tag})`)
+    const rule = ruleFor(`:where(.sankara-richtext) ${tag}`)
     expect(rule).toContain(`font-size: var(${token})`)
     // Preflight sets font-weight: inherit on headings; size alone is not a hierarchy.
     expect(rule).toContain('font-weight: 600')
@@ -88,45 +99,45 @@ describe('rich text stylesheet', () => {
   })
 
   it('gives h5 and h6 weight without a size', () => {
-    const rule = ruleFor(':where(.sankara-richtext) :where(h5, h6)')
+    const rule = ruleFor(':where(.sankara-richtext) :is(h5, h6)')
     expect(rule).toContain('font-weight: 600')
     expect(rule).not.toContain('font-size')
   })
 
   it('restores list markers, indents and nesting', () => {
-    expect(ruleFor(':where(.sankara-richtext) :where(ul)')).toContain('list-style-type: disc')
-    expect(ruleFor(':where(.sankara-richtext) :where(ol)')).toContain('list-style-type: decimal')
-    expect(ruleFor(':where(.sankara-richtext) :where(ul ul)')).toContain('list-style-type: circle')
-    expect(ruleFor(':where(.sankara-richtext) :where(ol ol)')).toContain('list-style-type: lower-alpha')
-    expect(ruleFor(':where(.sankara-richtext) :where(ul)')).toContain('padding-inline-start')
+    expect(ruleFor(':where(.sankara-richtext) ul')).toContain('list-style-type: disc')
+    expect(ruleFor(':where(.sankara-richtext) ol')).toContain('list-style-type: decimal')
+    expect(ruleFor(':where(.sankara-richtext) ul ul')).toContain('list-style-type: circle')
+    expect(ruleFor(':where(.sankara-richtext) ol ol')).toContain('list-style-type: lower-alpha')
+    expect(ruleFor(':where(.sankara-richtext) ul')).toContain('padding-inline-start')
   })
 
   it('spaces list items and nested lists, which the owl selector cannot reach', () => {
-    expect(ruleFor(':where(.sankara-richtext) :where(li + li)')).toContain('margin-block-start')
-    expect(ruleFor(':where(.sankara-richtext) :where(li > ul, li > ol)')).toContain(
+    expect(ruleFor(':where(.sankara-richtext) li + li')).toContain('margin-block-start')
+    expect(ruleFor(':where(.sankara-richtext) :is(li > ul, li > ol)')).toContain(
       'margin-block-start'
     )
   })
 
   it('underlines links rather than relying on colour alone', () => {
-    const rule = ruleFor(':where(.sankara-richtext) :where(a)')
+    const rule = ruleFor(':where(.sankara-richtext) a')
     expect(rule).toContain('color: var(--color-primary)')
     expect(rule).toContain('text-decoration-line: underline')
     expect(rule).toContain('text-underline-offset')
   })
 
   it('restores table borders, padding and header alignment', () => {
-    expect(ruleFor(':where(.sankara-richtext) :where(table)')).toContain('border-collapse: collapse')
-    const cells = ruleFor(':where(.sankara-richtext) :where(th, td)')
+    expect(ruleFor(':where(.sankara-richtext) table')).toContain('border-collapse: collapse')
+    const cells = ruleFor(':where(.sankara-richtext) :is(th, td)')
     expect(cells).toContain('border: 1px solid var(--color-muted)')
     expect(cells).toContain('padding:')
-    const th = ruleFor(':where(.sankara-richtext) :where(th)')
+    const th = ruleFor(':where(.sankara-richtext) th')
     expect(th).toContain('text-align: start')
   })
 
   it('restores hr and gives blockquote a fallback', () => {
-    expect(ruleFor(':where(.sankara-richtext) :where(hr)')).toContain('border-block-start')
-    expect(ruleFor(':where(.sankara-richtext) :where(blockquote)')).toContain(
+    expect(ruleFor(':where(.sankara-richtext) hr')).toContain('border-block-start')
+    expect(ruleFor(':where(.sankara-richtext) blockquote')).toContain(
       'border-inline-start'
     )
   })
@@ -138,14 +149,14 @@ describe('rich text stylesheet', () => {
     // Plain `hyphens: auto` chops short German words; the limit is not optional.
     expect(limited.length).toBe(hyphenated.length)
     // Body copy is deliberately not hyphenated — that policy needs its own evidence.
-    expect(ruleFor(':where(.sankara-richtext) :where(p)')).not.toContain('hyphens')
+    expect(ruleFor(':where(.sankara-richtext) p')).not.toContain('hyphens')
   })
 
   it('constrains text children, not the container, and exempts wide content', () => {
     const measured = ruleFor(':where(.sankara-richtext-measure) > *')
     expect(measured).toContain('max-inline-size: var(--richtext-measure)')
     const exempt = ruleFor(
-      ':where(.sankara-richtext-measure) > :where(table, figure, img, video, iframe, [data-wide])'
+      ':where(.sankara-richtext-measure) > :is(table, figure, img, video, iframe, [data-wide])'
     )
     expect(exempt).toContain('max-inline-size: none')
     // On the base class the measure would be unremovable, so every occurrence
