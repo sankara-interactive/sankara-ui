@@ -25,18 +25,42 @@ describe('cascade layering', () => {
   // An unlayered rule would beat everything, which is why nothing may sit outside.
   const layerOf = (css: string) => {
     const found: Array<{ selector: string; layer: string | null }> = []
-    let depth = 0
     const open: Array<{ layer: string | null; depth: number }> = []
+    let depth = 0
+    // Text since the last brace or semicolon — a long comma-separated
+    // selector list can put its `{` on its own line, so detection can't
+    // assume the selector's first character and its `{` share a line.
+    let buffer = ''
 
-    for (const line of css.split('\n')) {
-      const layer = line.match(/^\s*@layer\s+([\w-]+)\s*\{/)?.[1]
-      // A selector line starts a rule: a class, an attribute, or a :where().
-      if (/^\s*[.[:]/.test(line) && line.includes('{')) {
-        found.push({ selector: line.trim(), layer: open.at(-1)?.layer ?? null })
+    // Comments could themselves contain braces or selector-looking text, so
+    // strip them before scanning rather than trying to detect them inline.
+    const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '')
+
+    for (const ch of stripped) {
+      if (ch === '{') {
+        const text = buffer.replace(/\s+/g, ' ').trim()
+        const layer = text.match(/^@layer\s+([\w-]+)$/)?.[1]
+        // A selector prelude is a class, an attribute, or a :where() — never
+        // an at-rule (@layer, @media, @supports, @starting-style, @theme,
+        // @custom-variant all start with @ and are ignored here).
+        if (layer) {
+          open.push({ layer, depth })
+        } else if (/^[.[:]/.test(text)) {
+          found.push({ selector: text, layer: open.at(-1)?.layer ?? null })
+        }
+        depth += 1
+        buffer = ''
+      } else if (ch === '}') {
+        depth -= 1
+        while (open.length > 0 && depth <= open.at(-1)!.depth) open.pop()
+        buffer = ''
+      } else if (ch === ';') {
+        // Ends a declaration or a brace-less at-rule (e.g. @custom-variant
+        // ...;) — either way, nothing before it belongs to the next prelude.
+        buffer = ''
+      } else {
+        buffer += ch
       }
-      if (layer) open.push({ layer, depth })
-      depth += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length
-      while (open.length > 0 && depth <= open.at(-1)!.depth) open.pop()
     }
     return found
   }
