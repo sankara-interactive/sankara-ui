@@ -6,9 +6,9 @@ export default meta
 
 // Shaped like real CMS output: headings, lists, a link, a table, a rule — and
 // "Unternehmensnachfolge", the compound the hyphenation policy exists for.
-const document = (
+const cmsDocument = (
   <>
-    <h2>Unternehmensnachfolge richtig plannen</h2>
+    <h2>Unternehmensnachfolge richtig planen</h2>
     <p>
       Wir begleiten Sie bei der Übergabe Ihres Lebenswerks — von der ersten
       Standortbestimmung bis zum Vertragsabschluss.
@@ -59,7 +59,7 @@ const document = (
 export const Default: StoryObj<typeof RichText> = {
   render: () => (
     <div className="p-8" lang="de">
-      <RichText>{document}</RichText>
+      <RichText>{cmsDocument}</RichText>
     </div>
   ),
 }
@@ -67,7 +67,7 @@ export const Default: StoryObj<typeof RichText> = {
 export const WithoutMeasure: StoryObj<typeof RichText> = {
   render: () => (
     <div className="p-8" lang="de">
-      <RichText measure={false}>{document}</RichText>
+      <RichText measure={false}>{cmsDocument}</RichText>
     </div>
   ),
 }
