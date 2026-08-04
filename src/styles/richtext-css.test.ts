@@ -14,12 +14,57 @@ const ruleFor = (selector: string) => {
 }
 
 describe('rich text stylesheet', () => {
-  it('wraps every selector in :where() so a project rule outranks it', () => {
-    const selectors = block
+  it('wraps every selector token in :where() so a project rule outranks it', () => {
+    const selectorLines = block
       .split('\n')
       .filter(line => /^\s*[.:[]/.test(line) && line.includes('{'))
-      .map(line => line.trim())
-    const unwrapped = selectors.filter(line => !line.startsWith(':where('))
+      .map(line => line.trim().replace(/\s*\{$/, ''))
+
+    // Split a selector into its top-level compound selectors, i.e. break on
+    // combinators (descendant space, >, +, ~) and list-separating commas —
+    // but only outside parens, since :where(li > ul, li > ol) has commas and
+    // combinators that are arguments, not structure, of the outer selector.
+    const splitTopLevel = (selector: string): string[] => {
+      const segments: string[] = []
+      let depth = 0
+      let current = ''
+      for (const ch of selector) {
+        if (ch === '(') depth += 1
+        if (ch === ')') depth -= 1
+        if (depth === 0 && (ch === ' ' || ch === '>' || ch === '+' || ch === '~' || ch === ',')) {
+          if (current.trim()) segments.push(current.trim())
+          current = ''
+        } else {
+          current += ch
+        }
+      }
+      if (current.trim()) segments.push(current.trim())
+      return segments
+    }
+
+    // A compound selector is safe if it's the universal selector (already
+    // zero specificity, nothing to gain by wrapping it) or if a single
+    // :where(...) call wraps the entire thing — not just its opening token.
+    const isWrapped = (segment: string): boolean => {
+      if (segment === '*') return true
+      if (!segment.startsWith(':where(')) return false
+      let depth = 0
+      for (let i = 0; i < segment.length; i++) {
+        if (segment[i] === '(') depth += 1
+        if (segment[i] === ')') {
+          depth -= 1
+          if (depth === 0) return i === segment.length - 1
+        }
+      }
+      return false
+    }
+
+    const unwrapped = selectorLines.flatMap(line =>
+      splitTopLevel(line).filter(segment => !isWrapped(segment))
+    )
+    // Naming the offending token(s), not just failing a boolean: a bare tag,
+    // class or attribute selector here raises the rule's specificity, which
+    // is the one thing @layer base + :where() exists to prevent.
     expect(unwrapped).toEqual([])
   })
 
