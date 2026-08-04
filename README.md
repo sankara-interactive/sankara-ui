@@ -280,6 +280,67 @@ Firefox support is partial before 151. Without them the panel is a full-bleed
 sheet at the bottom of the viewport instead of an anchored dropdown —
 deliberately a different layout, never a misplaced one.
 
+## RichText
+
+Tailwind's preflight strips margins, list markers, heading sizes and link
+underlines from every element. That is fine for markup you author and wrong for
+CMS output, which nobody does. `RichText` puts the semantics back.
+
+```tsx
+import { RichText } from '@sankara-ui/core'
+
+<RichText>
+  <RichTextRenderer text={blok.text} />
+</RichText>
+```
+
+The class does the work, so if you already have a wrapper you can skip the
+component entirely:
+
+```tsx
+<article className="sankara-richtext sankara-richtext-measure">…</article>
+```
+
+Covered: block rhythm, `h1`–`h4` (fluid sizes), `h5`/`h6` (weight only), lists
+including nesting, links, tables, `hr`, and a minimal `blockquote` fallback. Not
+covered, and rendering as plain body text if they appear: `code`/`pre`,
+`figure`/`figcaption`, and anything Storyblok adds later. Embedded bloks pass
+through untouched but do receive block rhythm as siblings.
+
+### Overriding it
+
+Everything ships in `@layer base` with `:where()` selectors, which means it has
+zero specificity and loses to your own rules. Your `@layer base { h2 { … } }`
+wins, and so does any Tailwind utility. Tune the rest with the
+`--richtext-*` tokens in your own `@theme`.
+
+### Measure
+
+`measure` constrains text to `--richtext-measure` (`68ch`) and is on by default.
+It applies to the text children, not the container, so tables, images and
+anything marked `data-wide` still use the full width. Pass `measure={false}` to
+drop it. It sets width only — centre the column yourself if you want that.
+
+`ch` is the width of a "0" in your typeface, so `68ch` is a different line length
+in every brand. Lower the token if your face is wide.
+
+### Hyphenation needs `lang`
+
+Headings hyphenate, which German compounds need — "Unter­nehmens­nachfolge"
+otherwise overflows a narrow column. This does nothing without a `lang` attribute,
+and the nearest one must describe the *content*: a German page with a French rich
+text field needs `<RichText lang="fr">`, not the page's `lang`. `lang` passes
+through like any other prop.
+
+`hyphenate-limit-chars`, which keeps short words whole, is not supported
+everywhere — where it is missing, short words break too.
+
+### Wide tables
+
+A table with more columns than fit still overflows. Wrapping it in a scroll
+container changes the accessibility tree and needs a label, so your renderer owns
+that decision.
+
 ## Dialog
 
 Native `<dialog>` opened with `showModal()`, so the focus trap, Escape, the top
