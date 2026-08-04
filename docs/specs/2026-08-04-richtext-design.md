@@ -200,12 +200,21 @@ dedicated `Quote` bloks in finding 6.
 | Node | Behaviour if it appears | Why |
 | --- | --- | --- |
 | `code`, `pre` | Preflight's monospace only; no padding or background | No footprint anywhere (finding 5) |
-| `figure`, `figcaption`, `img` | Pass-through; sized by the consumer's own rules | Media layout is the consumer's; the measure explicitly exempts them (D6) |
+| `figure`, `figcaption`, standalone `img` | Pass-through; sized by the consumer's own rules | Media layout is the consumer's; the measure explicitly exempts them (D6) |
 | Embedded bloks | Pass-through, but they receive flow spacing as siblings (D7) | The renderer owns them |
 | Anything newer in Storyblok's schema | Unstyled, inheriting body copy | Coverage is dated evidence; the browser pass re-runs against a realistic document |
 
 This table is the contract: uncovered nodes degrade to readable body text, never
 to broken layout. Nothing here throws or warns — CSS cannot.
+
+**One node had to move from "not covered" to covered to keep that promise.**
+Preflight sets `img, svg, video, canvas, audio, iframe, embed, object
+{ display: block }`. For a standalone image between blocks that is right and
+stays uncovered, but for an image an editor dropped *inside* a paragraph it
+breaks the line in two — measured at 68px tall for one line of text. That is
+broken layout from preflight damage, the exact failure this table says never
+happens, so `:is(p, li, td, th) img { display: inline-block }` covers it. Scoped
+to inline contexts only, so nothing about standalone media changes.
 
 ### D5 — Both a class and a component
 
@@ -254,6 +263,36 @@ rules would be one more thing to override. Consumers centre it themselves.
 `68ch` is a heuristic, not a measurement: `ch` is the advance width of "0", so
 the same number is a different line length in every brand's typeface. The token
 exists precisely so a project with a wide face can lower it.
+
+**The token must be registered, or the measure does not constrain headings.**
+`ch` is font-relative, and an unregistered custom property is substituted as
+tokens and re-resolved wherever it is read — so a single `68ch` declaration
+becomes a *different* length on every child, and the wider the element's font,
+the wider its measure. Measured in one 1400px container before registration: `p`
+and `ul` 685.31px, `h5` 724.98px (wider than the paragraphs beside it, because
+bold "0" is wider), `h4` 859.71px, `h3` 979.76px, `h2` 1179.75px, `h1`
+1429.42px. Six measures in one column, and the elements the measure matters most
+for were the least constrained.
+
+```css
+@property --richtext-measure { syntax: '<length>'; inherits: true; initial-value: 100vw }
+```
+
+Registration makes the value compute where it is *declared* and inherit as an
+absolute length: all seven children then measure 685.31px. The declaration stays
+`68ch` in `@theme` and is not repeated on the container. Declaring it on the
+container would resolve `ch` against the container's own font, which is closer
+to the intent, but the container rule ships in `@layer base` and a consumer's
+`@theme` override lands in `@layer theme` — so the package would silently
+outrank it. Measured: with a container declaration, a consumer `@theme` of
+`40ch` computed 403.13px at the root and 685.31px inside the container. Root
+resolution keeps the token overridable, at the cost of resolving against the
+root font rather than the container's.
+
+`initial-value` is `100vw`, not `0px`. It is only reached if the `@theme`
+declaration is missing or a consumer supplies a non-`<length>` value, and `0px`
+there would collapse every child to nothing — the broken layout D4 promises the
+contract never degrades to.
 
 ### D7 — Flow spacing via the owl selector
 
@@ -336,11 +375,21 @@ zeroing it.
 | `li + li` | `margin-block-start: 0.25em` — list rhythm is tighter than block flow, and the owl does not reach list items |
 | `li > ul, li > ol` | `margin-block-start: 0.25em` — nested lists are not direct children of the container |
 | `a` | `color: var(--color-primary)`; `text-decoration-line: underline`; `text-decoration-thickness: 1px`; `text-underline-offset: 2px` |
-| `table` | `border-collapse: collapse`; `inline-size: 100%`; `text-align: start` |
+| `table` | `border-collapse: collapse`; `inline-size: 100%` |
 | `th, td` | `border: 1px solid var(--color-muted)`; `padding: 0.5em 0.75em` |
 | `th` | `font-weight: 600`; `text-align: start` |
 | `hr` | `border: 0`; `border-block-start: 1px solid var(--color-muted)` |
 | `blockquote` | `border-inline-start: 2px solid var(--color-muted)`; `padding-inline-start: 1em` |
+| `:is(p, li, td, th) img` | `display: inline-block` — preflight makes images block-level, which splits the line an inline image sits on (D4) |
+
+**No `text-align` on `table`.** An earlier draft had `text-align: start` there.
+It restores nothing — neither the UA stylesheet nor preflight sets a table's
+alignment — and it overrides *inherited* alignment instead: measured, a table
+inside a consumer's `text-center` block computed `start` while every sibling
+centred. `th` keeps its own `text-align: start`, which does override a real UA
+default of `center`. `border-collapse: collapse` is already in preflight and is
+kept as a redundancy, so the borders below still collapse for a consumer who
+replaces preflight with their own reset.
 
 Underline on links is not optional: preflight sets `text-decoration: inherit`, so
 a link distinguished by colour alone fails both discoverability and the
@@ -397,12 +446,20 @@ A stylesheet contract test, in the shape of `src/styles/button-css.test.ts`:
 - Every row of the CSS Contract table exists and sets what it claims.
 - The six tokens are declared with defaults; `tokens.test.ts` covers their
   presence in `TOKENS`.
-- The block sits inside `@layer base`, `.sankara-richtext`/
-  `.sankara-richtext-measure` are `:where()`-wrapped, and the element token
-  after them is bare (or `:is()`-grouped) — a container wrapped any other way
-  would silently outrank a consumer's own rule, and an element token wrapped
-  in `:where()` would silently lose to Tailwind's own preflight, which is the
-  defect D3 records and this is the invariant that protects the fix.
+- The block sits inside `@layer base`, and **every** selector prelude in it
+  starts with a `:where(.sankara-richtext…)` container, with the element token
+  after it bare (or `:is()`-grouped) — a container wrapped any other way would
+  silently outrank a consumer's own rule, and an element token wrapped in
+  `:where()` would silently lose to Tailwind's own preflight, which is the
+  defect D3 records and this is the invariant that protects the fix. The
+  preludes must be collected by scanning, not by matching an expected first
+  character: a guard that only looks at lines beginning `.`, `:` or `[` cannot
+  see an unscoped `h2 { }`, which is the one shape that would restyle every
+  consumer site. Proven by inserting exactly that.
+- `--richtext-measure` is registered as an inherited `<length>` with a
+  non-zero `initial-value`, and declared exactly once outside the registration
+  (D6) — a second declaration on the container would break a consumer's
+  `@theme` override.
 - The measure lives on the modifier class, and the exemption list is present.
 - The flow rule uses `margin-block-start`, not a physical property.
 - `hyphenate-limit-chars` accompanies every `hyphens: auto`.
@@ -620,6 +677,19 @@ round was adjusted to make a check pass — the stylesheet was already fixed
   types; D4's table is what the estate uses today, and the browser pass should
   be re-run against a realistic document whenever a project enables a new one.
 - **`68ch` is a heuristic**, not a measured line length (D6).
+- **The measure depends on `@property`.** In a browser without registered
+  custom properties, `--richtext-measure` falls back to token substitution and
+  the per-child resolution D6 records returns: headings get a wider measure than
+  the body copy beside them, ragged but readable. Nothing detects this, and
+  there is no CSS-only fallback — an unregistered `ch` cannot be resolved once.
+  `@property` shipped in Chrome 85, Safari 16.4 and Firefox 128, so the exposure
+  is old Safari and Firefox rather than any current engine. Two smaller
+  consequences of registering it: `ch` now resolves against the *root* font, not
+  the rich text container's, so a project that sets a different face on the
+  container gets that face's measure only if it sets the token there too; and an
+  invalid value (`--richtext-measure: none`, say, to try to disable the measure)
+  now falls back to `initial-value` rather than being dropped — use
+  `measure={false}`.
 
 ## Non-goals
 
