@@ -89,7 +89,7 @@ So `RichText` does set sizes, weights, markers and spacing — enough to work wi
 no project setup. Every value is a token or a documented floor, and D3 makes a
 project's own rules win.
 
-### D3 — `@layer base` with `:where()`, not `@layer components`
+### D3 — `@layer base`, container `:where()`-wrapped, element tokens bare
 
 The first draft put these rules in `@layer components` and claimed a project's
 own `@layer base` heading rules would still win. **That is false**, and external
@@ -109,8 +109,8 @@ utility:
 | `@layer components`, normal specificity | **loses** — 32px/700, ours wins | wins, 12px |
 | `@layer base`, `:where()` wrapped | **wins** — 48px/900 | wins, 12px |
 
-So the rules ship inside `@layer base`, with every selector wrapped in `:where()`
-for zero specificity:
+So the rules moved into `@layer base` — that part of the conclusion stood.
+What shipped next to it did not: every selector fully wrapped in `:where()`,
 
 ```css
 @layer base {
@@ -118,10 +118,66 @@ for zero specificity:
 }
 ```
 
-A project's ordinary `h2` rule then wins on specificity within the same layer,
-and utilities still win by layer order. The package's defaults become a floor
-that anything can step over, which is what D2 requires and what the first draft
-only asserted.
+on the reasoning that zero specificity is the safest possible floor. The table
+above only ever tested a project *with* a competing `h2` rule; it never tested
+a bare project, which is exactly the shape every consumer starts as before they
+write any heading CSS of their own. The Task 5 browser pass did test that case,
+against the real compiled stylesheet, and it failed: Tailwind's own preflight
+lives in the same `@layer base` this block does, and several of its resets are
+plain type selectors — `h1, h2, h3, h4, h5, h6 { font-size: inherit;
+font-weight: inherit }`, `ol, ul, menu { list-style: none }`, `a { color:
+inherit; text-decoration: inherit }` — each specificity `(0,0,1)`. A rule
+wrapped down to `(0,0,0)` loses outright to a `(0,0,1)` rule in the same layer,
+regardless of which one is later in source order. Measured: a fully-wrapped
+`h2` computed `16px`/`400` in a bare project — indistinguishable from body
+copy, no markers on any list, links inheriting `color` and `text-decoration`
+same as plain text. The package's defaults never applied unless a project
+*already* had a competing rule of its own, which inverts D2's premise that
+they work with no project setup.
+
+**Corrected, after the browser pass:** `:where()` stays on the container —
+`.sankara-richtext` / `.sankara-richtext-measure` still contribute zero
+specificity, so the class itself never out-ranks anything — but the element
+token after it ships bare:
+
+```css
+@layer base {
+  :where(.sankara-richtext) h2 { … }
+}
+```
+
+That lands the compound selector at `(0,0,1)`: tied with preflight's own
+reset, not beneath it. Two source-order dependencies make that tie resolve the
+right way twice over. First, this stylesheet is imported after Tailwind's
+preflight (`@import "tailwindcss"` before `@import "@sankara-ui/core/styles.css"`,
+as the README's install order requires) — so our `(0,0,1)` rule is later than
+preflight's `(0,0,1)` rule, and later wins a tie, restoring the defaults in a
+bare project. Second, a project's *own* bare `h2` rule is, by the same install
+order, imported after ours — so it ties us in turn and wins the same way. The
+package's rule is the middle link in a three-way chain (preflight, us, project),
+each tying the one before it and winning on source order, not on `:where()`
+alone.
+
+Comma-grouped selectors (`h5, h6`; `li > ul, li > ol`; `th, td`) use `:is()`,
+not `:where()`, for the same reason: `:where()` would zero them back out,
+undoing the fix for exactly those selectors. `:is()` takes the specificity of
+its most specific argument rather than zeroing it, so `:is(h5, h6)` still lands
+at `(0,0,1)` like every bare tag here. The measure's exemption list —
+`:is(table, figure, img, video, iframe, [data-wide])` — is deliberately higher
+still, at `(0,1,0)` from the attribute selector, because it has to out-rank the
+plain `> *` measure rule immediately above it, not merely tie preflight.
+
+This scheme is now load-bearing on the documented install order, not just on
+`@layer base` and `:where()`: it is source order, not the layer or the
+selector wrapping, that lets a project's own heading rule win. A project that
+imports this package's stylesheet *after* its own CSS reverses the chain, and
+that risk did not exist under the fully-wrapped shape, where specificity alone
+(not source order) decided every match but silently lost the ones that
+mattered. Re-run against the corrected stylesheet, in the browser, per the
+`## Verification` section below: bare project now gets `24px`–`32px`/`600`
+headings (clamp-dependent on viewport), `disc`/`circle`/`decimal` markers, and
+underlined `--color-primary` links; a project's own `h2` rule still wins at
+`48px`/`900`; a `text-xs` utility still wins at `12px`.
 
 Note this is the one place the package deviates from "component styles live in
 `@layer components`". `tokens.test.ts`'s layering invariant must be updated to
@@ -256,8 +312,13 @@ asserting "short words never break" as a universal.
 ## CSS Contract
 
 The complete rule set, so implementation is transcription rather than invention.
-Every selector is `:where()`-wrapped inside `@layer base` per D3; the wrappers are
-elided here for readability.
+Every selector lives inside `@layer base` per D3, with `.sankara-richtext`
+itself `:where()`-wrapped and the element token bare (`:where(.sankara-richtext)
+h2`, not `:where(.sankara-richtext) :where(h2)`) — the wrapper is elided below
+for readability, the bareness is not: it is the specificity `(0,0,1)` D3
+depends on. Comma-grouped selectors (`h5, h6`; `li > ul, li > ol`; `th, td`)
+use `:is()` in the same position, which preserves that specificity instead of
+zeroing it.
 
 | Selector | Declarations |
 | --- | --- |
@@ -336,9 +397,12 @@ A stylesheet contract test, in the shape of `src/styles/button-css.test.ts`:
 - Every row of the CSS Contract table exists and sets what it claims.
 - The six tokens are declared with defaults; `tokens.test.ts` covers their
   presence in `TOKENS`.
-- The block sits inside `@layer base` and every selector is `:where()`-wrapped —
-  a rule without `:where()` would silently outrank a consumer, so this is the
-  invariant that protects D3.
+- The block sits inside `@layer base`, `.sankara-richtext`/
+  `.sankara-richtext-measure` are `:where()`-wrapped, and the element token
+  after them is bare (or `:is()`-grouped) — a container wrapped any other way
+  would silently outrank a consumer's own rule, and an element token wrapped
+  in `:where()` would silently lose to Tailwind's own preflight, which is the
+  defect D3 records and this is the invariant that protects the fix.
 - The measure lives on the modifier class, and the exemption list is present.
 - The flow rule uses `margin-block-start`, not a physical property.
 - `hyphenate-limit-chars` accompanies every `hyphens: auto`.
@@ -383,113 +447,109 @@ asserting a universal.
 
 ## Verification
 
-Run 2026-08-04 against a compiled Tailwind 4.3.3 fixture (`@tailwindcss/cli`,
-following the harness the D3 table itself used) and the Task 4 Storybook build
-(`richtext--default`, `richtext--without-measure`, `richtext--narrow-column`,
-confirmed from `index.json` rather than assumed), on **Chrome
-150.0.7871.115 on macOS** — confirmed via `navigator.userAgentData` brands
-(`Chromium 150`, `Google Chrome 150`) and `getHighEntropyValues(['uaFullVersion'])`;
-the platform build number could not be read because the automation's own
-output filter blocked the `platformVersion` string (flagged as looking like
-token/JWT data) on every phrasing tried. One engine only; see below for what
-this does not cover.
+Two rounds, both against **Chrome 150.0.7871.115 on macOS** — confirmed via
+`navigator.userAgentData` brands (`Chromium 150`, `Google Chrome 150`) and
+`getHighEntropyValues(['uaFullVersion'])`; the platform build number could not
+be read in either round because the automation's own output filter blocked
+the `platformVersion` string (flagged as looking like token/JWT data) on
+every phrasing tried. One engine only, both rounds; see below for what this
+does not cover.
 
-The `claude-in-chrome` automated tab reports `visibilityState: "hidden"`, so
-`requestAnimationFrame` never fires there; every measurement below is a
-synchronous `getComputedStyle`/`getBoundingClientRect` read after forcing
-layout with `document.body.offsetHeight`, with `setTimeout` waits (not `rAF`)
-where React needed a moment to render a story. `resize_window` changed the
-OS-level window but never moved `window.innerWidth` in this automated tab (it
-stayed at 1720 throughout), so the narrow-viewport checks below constrain
-width via the page's own layout (a `body { max-width }` override on the raw
-fixture, and the `NarrowColumn` story's own `max-w-[18rem]` wrapper) rather
-than a true viewport resize — geometry is unaffected by which mechanism
-narrows the containing block.
+**Round 1 (2026-08-04, first stylesheet shape — fully `:where()`-wrapped)**
+ran the brief's specified check — a fixture with a project rule `@layer base
+{ h2 { font-size: 3rem; font-weight: 900 } }` and a `text-xs` utility — and it
+passed exactly as specified: project rule `48px`/`900`, utility `12px`.
+Investigating *why* it passed (the project's own `h2` is itself a plain type
+selector tied with Tailwind's preflight, winning the tie on source order —
+our zero-specificity rule was never a contender in that particular match)
+led to testing the case the brief's own fixture doesn't isolate: a bare
+project with no competing CSS at all. That failed. Confirmed in two
+independent builds (a from-scratch fixture with zero project CSS, and the
+real `richtext--default` Storybook story): `h2` computed `16px`/`400` instead
+of the clamp, every list computed `list-style-type: none`, links computed
+`text-decoration-line: none` / `color: rgb(0, 0, 0)`. Root cause: Tailwind's
+own preflight — `h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight:
+inherit; }`, `ol, ul, menu { list-style: none; }`, `a { color: inherit;
+text-decoration: inherit; }` — lives in the same `@layer base` as the
+package's rules and is a plain type selector, specificity `(0,0,1)`; a rule
+fully wrapped in `:where()` is `(0,0,0)` and loses outright to `(0,0,1)` in
+the same layer regardless of source order. Full round-1 measurements are in
+`.superpowers/sdd/2026-08-04-richtext-implementation/task-5-report.md`. That
+finding produced the stylesheet change D3 now describes — container
+`:where()`-wrapped, element token bare — and this section was rewritten
+after re-verifying the corrected shape, below; nothing here still describes
+the broken shape as current.
 
-**Central check — D3's cascade claim, exactly as specified:** compiled a
-fixture with a project rule `@layer base { h2 { font-size: 3rem; font-weight:
-900 } }` and a `text-xs` utility, per the brief.
+**Round 2 (2026-08-04, corrected stylesheet, commit `3b07a0d`)** re-ran every
+check from the brief against the fixed CSS.
+
+Methodology, updated from round 1: the `claude-in-chrome` automated tab still
+reports `visibilityState: "hidden"`, so `requestAnimationFrame` was never
+awaited; every measurement is a synchronous `getComputedStyle`/
+`getBoundingClientRect` read after forcing layout with
+`document.body.offsetHeight`, with `setTimeout` waits (not `rAF`) where React
+needed a moment to render a story. `resize_window` again never moved
+`window.innerWidth` in the automated tab — this session's tab was fixed at
+`320×692` throughout, regardless of the size requested — so narrow-viewport
+checks used the fixed `320px` viewport directly (no artificial narrowing
+needed) or a further-narrowed containing block via inline `max-width` on
+`body`, and the **wide**-viewport clamp reading used a same-origin `<iframe>`
+sized `1600×400` injected into the page: `vw` units resolve against an
+iframe's own initial containing block, so this is a real, distinct viewport
+width for CSS purposes, not a simulation.
+
+**Central check, re-run:**
 
 | Check | Result |
 | --- | --- |
 | Project's own `@layer base` `h2` beats ours | pass — `48px` / `900` |
 | `text-xs` utility beats both | pass — `12px` |
 
-That is the check the brief specifies, and it passes. Investigating *why* it
-passes surfaced a defect the specified check cannot see, because it never
-tests the no-competing-rule case.
+Unchanged from round 1 — this was never the broken case.
 
-**Defect found: the package's own defaults lose to Tailwind's own preflight,
-with no consumer rule involved at all.** Preflight ships inside the same
-`@layer base` Tailwind puts our rules in, and several preflight selectors are
-plain type selectors — non-zero specificity — while every one of our
-selectors is `:where()`-wrapped to zero specificity by design (D3). Within one
-layer, layering does nothing; specificity decides, and zero always loses to
-non-zero regardless of source order. Confirmed identically in two independent
-builds — a from-scratch consumer fixture with no project CSS at all, and the
-real Storybook build:
-
-| Element | Preflight rule (verbatim, `@layer base`) | Our rule (verbatim, `@layer base`) | Specificity | Computed result |
-| --- | --- | --- | --- | --- |
-| `h1`–`h6` | `h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }` | `:where(.sankara-richtext) :where(h2) { font-size: var(--richtext-h2); font-weight: 600; … }` | preflight `(0,0,1)` vs ours `(0,0,0)` | **preflight wins** — `h2` computed `font-size: 16px`, `font-weight: 400` (body copy, not the `~32px`/`600` the clamp specifies) |
-| `ul`/`ol` | `ol, ul, menu { list-style: none; }` | `:where(.sankara-richtext) :where(ul) { list-style-type: disc; … }` (and `ol`, `ul ul`, `ul ul ul`, `ol ol`) | preflight `(0,0,1)` vs ours `(0,0,0)` | **preflight wins** — every list, top-level and nested, computed `list-style-type: none`; no markers render |
-| `a` | `a { color: inherit; text-decoration: inherit; }` | `:where(.sankara-richtext) :where(a) { color: var(--color-primary); text-decoration-line: underline; … }` | preflight `(0,0,1)` vs ours `(0,0,0)` | **preflight wins** — computed `color: rgb(0, 0, 0)`, `text-decoration-line: none` |
-
-Reconciling this with the central check above: in that fixture, the project's
-`h2` rule is *also* a plain `h2` selector — specificity `(0,0,1)`, tied with
-preflight's `h1, h2, … { font-size: inherit }`. The tie resolves by source
-order, and the project rule is declared last in `input.css`, so it beats
-preflight. Our zero-specificity rule was never a contender in that match — the
-measured `48px` proves the project rule beats preflight, not that our rule
-beats anything. The brief's check is satisfied as written and still leaves the
-no-override case, which is the component's actual value proposition (D2:
-"`RichText` does set sizes, weights, markers and spacing … with no project
-setup"), unverified — and that case fails.
-
-This is not a corner case: it is the *empty* stylesheet case, produced simply
-by putting `<RichText>` on a page with only Tailwind's own preflight present,
-which is every consumer by construction (D1's premise is that these are Next
-+ Tailwind v4 projects). The `richtext--default` story — real component, real
-compiled `styles.css`, no project overrides — measured `h2` at `16px`/`400`
-(clamp/weight never applied), `ol`/`ul`/nested `ul` all `list-style-type:
-none`, and links at `text-decoration-line: none` / `color: rgb(0, 0, 0)`. The
-`richtext--narrow-column` story, whose purpose is to show
-"Unternehmensnachfolge" hyphenate, instead renders it as one line at `16px`
-(`19.1875px` box height = one line-height, not two) — because the heading
-never reaches a size large enough to need breaking, so the story does not
-demonstrate the feature it exists to demonstrate.
-
-**What was unaffected, and measured passing**, because the competing preflight
-selectors there are the universal selector `*` (zero specificity, same as
-`:where()`) rather than a type selector, so our block — declared after
-Tailwind's own base content — wins the source-order tie:
+**Bare-project defaults, re-run — this is what round 1 found broken:**
 
 | Check | Result |
 | --- | --- |
-| `table` border-collapse, `th`/`td` 1px solid borders, `th` weight 600 | pass — `border-collapse: collapse`; `th`/`td` `1px solid`; `th` `font-weight: 600` |
+| `h2` font-size/weight, bare project, `320px` viewport | pass — `24px`/`600` (clamp floor: `clamp(1.5rem, 1.2rem + 1.4vw, 2rem)` at `320px` vw evaluates below `1.5rem`, so it clamps to the `24px` floor) |
+| `h2` font-size, bare project, `1600px` iframe viewport | pass — `32px`/`600` (clamp ceiling: `2rem`) — confirms the clamp actually moves between narrow and wide, not just that it resolves to *some* value |
+| `ul`/`ol`/nested `ul` markers, bare project | pass — `ul` `disc`, `ol` `decimal`, `ul ul` `circle` |
+| `a` colour/underline, bare project | pass — `color: oklch(0.55 0.22 275)` (`--color-primary`), `text-decoration-line: underline` |
+| `table`/`th`/`td` borders, bare project | pass — `border-collapse: collapse`, `th`/`td` `1px solid`, `th` `font-weight: 600` |
+
+Same checks, in the real `richtext--default` Storybook story (`320px`
+viewport, so the clamp floor applies): `h2` `24px`/`600`, `h3` `20.16px`,
+`h4` `18.08px`, `ul` `disc`, nested `ul` `circle`, `ol` `decimal`, `a`
+`oklch(0.55 0.22 275)`/`underline`, `table`/`th`/`td`/`hr`/`blockquote` all
+as below — all pass, matching the fixture.
+
+**Unaffected checks, re-confirmed unchanged:**
+
+| Check | Result |
+| --- | --- |
 | `hr` | pass — `border-top: 1px solid` |
 | `blockquote` | pass — `border-inline-start: 2px solid`, `padding-inline-start: 16px` |
-| D6 measure: paragraph capped near `68ch`, table/container unconstrained | pass — paragraph `max-inline-size: 685.312px` (`68ch` at `16px`/system-ui), table width `1720px` = container width `1720px` = viewport width, i.e. both unconstrained |
-| D7 flow spacing: every child but the first gets `margin-block-start: var(--richtext-flow)`, including around the table | pass — child 0 (`h2`) `0px`; every subsequent child (`p`, `h3`, `ul`, `h4`, `ol`, `p`, `table`, `hr`, `blockquote`) `16px` |
+| D6 measure: paragraph capped near `68ch`, table/container unconstrained | pass — `max-inline-size: 685.312px` on the paragraph (`68ch` at `16px`/system-ui); table width equals container width in every fixture, i.e. unconstrained |
+| D7 flow spacing: every child but the first gets `margin-block-start: var(--richtext-flow)`, including around the table | pass — first child `0px`, every subsequent child `16px`, in both a raw fixture (`h2, ul, ol, p, table`) and the `richtext--default` story (10 children) |
 | List rhythm: `li + li` and `li > ul` get `0.25em` | pass — both `4px` at `16px` font |
 
-**D8 hyphenation, tested in isolation on the raw compiled fixture** (not
-through the broken heading size, since the story can't exercise it — see
-above). Narrowed the containing block to `288px` and set the test heading's
-font back to a size where the compound doesn't trivially fit, to test the
-mechanism independent of the D3 defect:
+**D8 hyphenation — now demonstrated with the component's real clamp size,
+not a stand-in font-size:**
 
 | Check | Result |
 | --- | --- |
-| Long compound ("Unternehmensnachfolge", 22 chars) in a `288px` box, `lang="de"` | pass — wrapped to 2 lines (`115.1875px` = `2 × 57.6px` line-height); `overflow-wrap`/`word-break` both `normal`, so the break can only be `hyphens: auto` acting on a single unbroken word |
-| Same heading, `lang` removed from the ancestor | pass — back to 1 line (`57.59px`); `scrollWidth − clientWidth = 293px`, i.e. the compound now overflows instead of breaking — hyphenation is fully `lang`-dependent as D8 states |
-| Short word ("unsere", 6 chars, under the `14`-char `hyphenate-limit-chars` floor), `lang="de"`, `40px` box | pass — stayed on one line (`57.59px`), overflowed by `121px` rather than hyphenating — **Chrome 150 honours `hyphenate-limit-chars: 14 5 5`, keeping short words whole** |
+| Long compound ("Unternehmensnachfolge") at its real `24px` clamp size, narrowed to a `160px` box, `lang="de"` | pass — wrapped to 2 lines (`57.59px` = `2 × 28.8px` line-height); `overflow-wrap`/`word-break` both `normal`, so the break is `hyphens: auto` |
+| Same heading, `lang` removed from the ancestor | pass — back to 1 line (`28.8px`); `scrollWidth − clientWidth = 110px`, i.e. overflows instead of breaking |
+| Short word ("unsere", 6 chars, under the `14`-char `hyphenate-limit-chars` floor), `lang="de"`, `30px` box | pass — stayed on one line (`28.8px`), overflowed by `45px` — Chrome 150 still honours the `14`-character floor at the corrected font size |
+| **`richtext--narrow-column` story** — the story whose purpose is to demonstrate this | **pass, now** — wrapper is `288px` wide (`18rem` minus `p-8` padding = `224px` content), `h2` computed `24px`/`600` (the real clamp floor, not body copy), and wraps to 2 lines (`57.59px` height = `2 × 28.8px`). Round 1 measured this story rendering the heading as one line at `16px` because the clamp never applied; round 2 confirms the fix reaches this story specifically, not just the fixtures. |
 
-Record only for this engine: Chrome 150 respects the `14`-character floor.
-Firefox added `hyphenate-limit-chars` in 137 per D8; no Firefox build was
-available here to compare, so whether Firefox 137+ shows the same short-word
-behaviour, and what pre-137 Firefox or Safari do (`hyphens: auto` alone, so
-short words *will* break there per D8's own prediction), is unobserved.
+Record only for this engine: Chrome 150 respects the `14`-character floor,
+both before and after the stylesheet fix (the fix changes selector
+specificity, not the hyphenation properties themselves). Firefox added
+`hyphenate-limit-chars` in 137 per D8; no Firefox build was available here to
+compare, so whether Firefox 137+ shows the same short-word behaviour, and
+what pre-137 Firefox or Safari do (`hyphens: auto` alone, so short words
+*will* break there per D8's own prediction), is unobserved.
 
 **Unobserved, explicitly:**
 
@@ -497,47 +557,50 @@ short words *will* break there per D8's own prediction), is unobserved.
   (Chrome 150). D8 already predicts different `hyphenate-limit-chars`
   behaviour pre-Firefox-137 and in Safari; unconfirmed.
 - A real screen-reader session over the restored semantics (list markers,
-  table headers, link underlines) — this run inspected computed CSS and
+  table headers, link underlines) — both rounds inspected computed CSS and
   geometry only.
-- The clamp scale's actual viewport-responsiveness (`clamp()` moving between a
-  narrow and wide viewport): not measurable here, because `window.innerWidth`
-  did not respond to `resize_window` in the automated tab, and because the
-  font-size never applies at all per the defect above — there is nothing to
-  watch move until that is fixed.
-- Whether the defect's severity differs for a consumer whose own stylesheet
-  happens to declare *any* rule for `h1`–`h6`, `ul`/`ol`, or `a` in `@layer
-  base` with non-zero specificity (as the brief's own fixture does) — such a
-  consumer's rule would beat preflight the same way the fixture's did, which
-  would incidentally beat our rule too and mask the defect in that specific
-  project without fixing it.
+- Whether `window.innerWidth` genuinely cannot be changed via `resize_window`
+  in this automation, or whether some other mechanism would move it — the
+  iframe-viewport technique above worked around this for the clamp check, but
+  the underlying tool behaviour itself is unexplained across two sessions in
+  two different fixed sizes (`1720px` in round 1, `320px` in round 2).
+- Whether the two source-order dependencies D3 now names — this stylesheet
+  imported after Tailwind's preflight, a project's own rules imported after
+  this stylesheet — hold in a real consumer's build pipeline (bundler import
+  order, CSS-in-JS extraction order) rather than the single-file
+  `@tailwindcss/cli` fixtures and the Storybook Vite build used here. All
+  fixtures and the Storybook build follow the README's documented install
+  order by construction; a consumer that doesn't was not tested.
 
-**Verdict: fails the check this task exists to run.** D3's premise — that the
-package's rules are "a floor a project can step over" — requires the floor to
-exist by default first. Measured on a compiled Tailwind 4.3.3 fixture and the
-real Storybook build, in Chrome 150, it does not: `:where()`-wrapped
-selectors in `@layer base` lose to Tailwind's own preflight selectors in the
-same layer whenever preflight uses a plain type selector (`h1`–`h6`, `ul`,
-`ol`, `menu`, `a`), because cascade layers do not adjudicate ties within one
-layer — specificity does, and `:where()` was chosen specifically to make ours
-zero. The rules that survive are exactly the ones where preflight's
-competing selector also happens to be zero-specificity (`*`, adjacent-sibling
-combinators). Nothing in this run was adjusted to make a check pass; this is
-reported, not fixed.
+**Verdict: the check this task exists to run now passes.** Round 1's defect —
+package defaults losing to Tailwind's own preflight in a bare project, with
+no consumer rule involved — is corrected and re-verified in a from-scratch
+fixture and in the real Storybook build: bare-project headings, list markers,
+and link styling all restore as D2 and D4 specify, the clamp scale measurably
+moves between a `320px` and a `1600px` viewport, and the `NarrowColumn` story
+now demonstrates the hyphenation it was written to demonstrate. A project's
+own rule and a `text-xs` utility both still win, unchanged. Nothing in this
+round was adjusted to make a check pass — the stylesheet was already fixed
+(commit `3b07a0d`) before this round ran; this section only re-measures it.
 
 ## Risks and open questions
 
-- **D3's zero-specificity rules lose to Tailwind's own preflight by default,
-  with no project CSS involved.** See Verification. `h1`–`h6` sizing, list
-  markers (top-level and nested), and link colour/underline all fail to apply
-  out of the box; only the rules competing against preflight's `*`-scoped
-  resets (tables, `hr`, `blockquote`, flow spacing, measure) survive. This
-  needs a decision before merge: either the affected selectors need enough
-  specificity to beat preflight's plain type selectors while staying beatable
-  by an ordinary project rule (a form of `:where()` that isn't fully zero, or
-  moving just those selectors out of competition with preflight some other
-  way), or D3 has to be re-scoped to state plainly that the defaults only take
-  effect once a project has *any* competing rule for that element — which
-  contradicts D2's "works with no project setup."
+- **Fixed, but load-bearing on install order.** D3's first shipped shape —
+  every selector fully `:where()`-wrapped — lost to Tailwind's own preflight
+  by default, with no project CSS involved: `h1`–`h6` sizing, list markers,
+  and link colour/underline all failed to apply out of the box (see
+  Verification, round 1). The corrected shape (container `:where()`-wrapped,
+  element token bare, landing at specificity `(0,0,1)`) fixes this, re-verified
+  in round 2 — but it now depends on source order rather than specificity
+  alone: this stylesheet must be imported after Tailwind's preflight, and a
+  project's own competing rule must be imported after this stylesheet, both
+  already true by the README's documented install order but not something the
+  CSS itself can enforce. A consumer who imports this package's stylesheet
+  before their own base styles, or before Tailwind, breaks the chain in a way
+  the fully-wrapped shape structurally couldn't. Nothing currently detects
+  that misordering; it would need to be a review note or a runtime check in
+  the package's own test suite of its *own* CSS, not something testable
+  against a consumer's build.
 - **D3 puts package rules in `@layer base`,** which no other component here does.
   It is right for defaults meant to be overridden, and wrong for anything that
   must hold — a future rule in this file that must not be overridden belongs in
