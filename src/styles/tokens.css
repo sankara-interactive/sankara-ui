@@ -17,6 +17,35 @@
   --richtext-h4: clamp(1.125rem, 1.05rem + 0.4vw, 1.25rem);
 }
 
+/* --richtext-measure is registered, and it has to be. `ch` is font-relative, so
+   an unregistered custom property carrying `68ch` is substituted as *tokens*
+   and re-resolved against each element that reads it: the same declaration then
+   means a different length on every child, and headings — bigger, bolder, wider
+   "0" — get a wider measure than the paragraphs beside them. Measured in a
+   compiled Tailwind 4.3.3 fixture in Chrome 150, one 1400px container, before
+   this registration: p and ul 685.31px, h5 724.98px, h4 859.71px, h3 979.76px,
+   h2 1179.75px, h1 1429.42px — six different measures in one column. The
+   defect the measure exists to prevent was unfixed for exactly the elements it
+   shows on most. After: all seven 685.31px.
+   Registering it as a <length> makes the value compute where it is *declared* —
+   once, on the root, against the root font — and inherit down as an absolute
+   length, so every child clamps to the same measure. The declaration stays
+   `68ch` in @theme: a character count is the intent, and it stays overridable
+   from a consumer's own @theme, which a re-declaration on the container would
+   silently outrank (@layer base beats @layer theme).
+   initial-value is deliberately not 0px. It only applies if the @theme
+   declaration is missing or a consumer supplies a non-<length> value, and in
+   that case a 0px max-inline-size would collapse every child to nothing —
+   broken layout, which the D4 contract says this stylesheet never degrades to.
+   100vw is effectively "unconstrained" instead.
+   Without @property support the behaviour degrades to the per-child resolution
+   measured above: ragged, but readable. */
+@property --richtext-measure {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 100vw;
+}
+
 @layer components {
   /* Animated <dialog>. display and overlay must transition discretely, and the
      entry frame comes from @starting-style. The backdrop needs its own pair of
@@ -383,11 +412,16 @@
   /* Editors can insert a table from the Storyblok toolbar today — the field type
      is live in 14 schemas — and preflight leaves it borderless. A table wider
      than its column still overflows; a scroll container changes the
-     accessibility tree and needs a label, so the consumer's renderer owns that. */
+     accessibility tree and needs a label, so the consumer's renderer owns that.
+     No text-align here. Nothing strips a table's alignment — neither the UA nor
+     preflight sets one — so `text-align: start` restored nothing and instead
+     overrode *inherited* alignment: a table inside a consumer's `text-center`
+     block computed `start` while everything around it centred. border-collapse
+     is already in preflight and kept only so the borders below still collapse
+     for a consumer who replaces preflight with their own reset. */
   :where(.sankara-richtext) table {
     border-collapse: collapse;
     inline-size: 100%;
-    text-align: start;
   }
 
   :where(.sankara-richtext) :is(th, td) {
@@ -412,11 +446,23 @@
     padding-inline-start: 1em;
   }
 
+  /* Preflight sets `img, svg, video, canvas, audio, iframe, embed, object
+     { display: block }`, which is right for authored markup and wrong for an
+     image an editor dropped *inside* a paragraph: it breaks the line in two.
+     The only place uncovered preflight damage produced broken layout rather
+     than plain body text, so it is covered rather than documented away. Scoped
+     to inline contexts, so a standalone image between blocks stays a block. */
+  :where(.sankara-richtext) :is(p, li, td, th) img {
+    display: inline-block;
+  }
+
   /* The measure constrains text children, never the container: a capped
      container would squeeze the tables and media above. [data-wide] is the
      documented escape hatch for an embedded blok that must run full width.
      Width only — a constrained block stays start-aligned, and consumers centre
-     it themselves rather than overriding a margin we invented. */
+     it themselves rather than overriding a margin we invented.
+     Every child reads the same inherited length, not its own re-resolution of
+     `68ch` — see the @property registration at the top of this file. */
   :where(.sankara-richtext-measure) > * {
     max-inline-size: var(--richtext-measure);
   }

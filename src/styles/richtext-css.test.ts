@@ -13,13 +13,32 @@ const ruleFor = (selector: string) => {
   return block.match(new RegExp(`${escaped}\\s*\\{[^}]*\\}`, 's'))?.[0] ?? ''
 }
 
-describe('rich text stylesheet', () => {
-  it('wraps the container in :where() and leaves element tokens bare, tying preflight and a project rule in turn', () => {
-    const selectorLines = block
-      .split('\n')
-      .filter(line => /^\s*[.:[]/.test(line) && line.includes('{'))
-      .map(line => line.trim().replace(/\s*\{$/, ''))
+// Every selector prelude in the block — collected by scanning, not by matching
+// a line prefix. A prefix filter (`/^\s*[.:[]/`) cannot see a prelude that
+// starts with a letter, which is precisely the dangerous shape: a bare `h2 {}`
+// escaping the container would restyle every heading on the consumer's site,
+// and would have been invisible to this file.
+const selectorPreludes = (() => {
+  const stripped = block.replace(/\/\*[\s\S]*?\*\//g, '')
+  const found: string[] = []
+  let buffer = ''
+  for (const ch of stripped) {
+    if (ch === '{') {
+      const text = buffer.replace(/\s+/g, ' ').trim()
+      // At-rules (@layer, @media, @supports) are structure, not selectors.
+      if (text && !text.startsWith('@')) found.push(text)
+      buffer = ''
+    } else if (ch === '}' || ch === ';') {
+      buffer = ''
+    } else {
+      buffer += ch
+    }
+  }
+  return found
+})()
 
+describe('rich text stylesheet', () => {
+  it('scopes every rule to the container and leaves element tokens bare, tying preflight and a project rule in turn', () => {
     // Split a selector into its top-level compound selectors, i.e. break on
     // combinators (descendant space, >, +, ~) and list-separating commas —
     // but only outside parens, since :is(li > ul, li > ol) has commas and
@@ -57,17 +76,21 @@ describe('rich text stylesheet', () => {
       return false
     }
 
-    // The container (the first compound selector, the sankara-richtext(-measure)
-    // class) must be :where()-wrapped so the class itself adds zero
-    // specificity. Every element token after it (h2, :is(h5, h6), ...) must
-    // stay bare — re-wrapping it in :where() would drop the rule back to
-    // (0,0,0), which loses outright to preflight's own (0,0,1) base-layer
-    // resets. Named per violation, not just a boolean.
-    const violations = selectorLines.flatMap(line => {
-      const [container, ...elementTokens] = splitTopLevel(line)
+    // The first compound selector of every rule must be the
+    // :where()-wrapped container: :where() so the class itself adds zero
+    // specificity, and the container so no rule here can ever reach an element
+    // outside a rich text block. Every element token after it (h2,
+    // :is(h5, h6), ...) must stay bare — re-wrapping it in :where() would drop
+    // the rule back to (0,0,0), which loses outright to preflight's own
+    // (0,0,1) base-layer resets. Named per violation, not just a boolean.
+    expect(selectorPreludes.length).toBeGreaterThan(0)
+    const violations = selectorPreludes.flatMap(prelude => {
+      const [container, ...elementTokens] = splitTopLevel(prelude)
       const found: string[] = []
-      if (container !== undefined && !isWrappedInWhere(container)) {
-        found.push(`container not wrapped in :where(): ${container}`)
+      if (container === undefined || !isWrappedInWhere(container)) {
+        found.push(`first compound selector not a :where() container: ${prelude}`)
+      } else if (!container.startsWith(':where(.sankara-richtext')) {
+        found.push(`rule not scoped to the rich text container: ${prelude}`)
       }
       for (const token of elementTokens) {
         if (isWrappedInWhere(token)) {
@@ -127,12 +150,24 @@ describe('rich text stylesheet', () => {
   })
 
   it('restores table borders, padding and header alignment', () => {
-    expect(ruleFor(':where(.sankara-richtext) table')).toContain('border-collapse: collapse')
+    const table = ruleFor(':where(.sankara-richtext) table')
+    expect(table).toContain('border-collapse: collapse')
+    expect(table).toContain('inline-size: 100%')
+    // Nothing strips a table's alignment, so setting one restores nothing and
+    // overrides *inherited* alignment instead: a table inside a consumer's
+    // `text-center` block would compute `start` while its siblings centre.
+    expect(table).not.toContain('text-align')
     const cells = ruleFor(':where(.sankara-richtext) :is(th, td)')
     expect(cells).toContain('border: 1px solid var(--color-muted)')
     expect(cells).toContain('padding:')
+    // th is the exception: the UA stylesheet really does set `center` on it.
     const th = ruleFor(':where(.sankara-richtext) th')
     expect(th).toContain('text-align: start')
+  })
+
+  it('keeps an image inside a text node inline, which preflight turns into a block', () => {
+    const rule = ruleFor(':where(.sankara-richtext) :is(p, li, td, th) img')
+    expect(rule).toContain('display: inline-block')
   })
 
   it('restores hr and gives blockquote a fallback', () => {
@@ -169,6 +204,34 @@ describe('rich text stylesheet', () => {
       .filter(chunk => chunk.includes('max-inline-size'))
       .map(chunk => chunk.trim().split('{')[0]?.trim())
     expect(owners.every(selector => selector?.includes('sankara-richtext-measure'))).toBe(true)
+  })
+
+  it('resolves the measure once, so it is not re-resolved against each child font', () => {
+    // `ch` is font-relative. An *unregistered* custom property is substituted
+    // as tokens and re-resolved wherever it is read, so `68ch` becomes a
+    // different length on every child — headings, wider than body copy, get a
+    // wider measure than the paragraphs beside them. Registering it as a
+    // <length> computes it where it is declared and inherits an absolute
+    // length. Measured in Chrome 150 before this registration, one container:
+    // p and ul 685.31px, h5 724.98px, h4 859.71px, h3 979.76px, h2 1179.75px,
+    // h1 1429.42px. After: all seven 685.31px.
+    const registration = css.match(/@property --richtext-measure\s*\{[^}]*\}/s)?.[0] ?? ''
+    expect(registration).toContain("syntax: '<length>'")
+    expect(registration).toContain('inherits: true')
+    // Only reached if @theme's declaration is missing or a consumer supplies a
+    // non-<length>; 0px there would collapse every child to nothing, which D4
+    // forbids the contract from degrading to.
+    expect(registration).toMatch(/initial-value: (?!0)/)
+
+    // The token must be declared exactly once outside the registration, in
+    // @theme. A second declaration on the container would resolve `ch` against
+    // the container font — but it ships in @layer base, which outranks the
+    // @layer theme block a consumer's own @theme override lands in, so it
+    // would silently pin the measure at 68ch. Measured: with the container
+    // declaration in place, a consumer @theme of 40ch computed 403.13px at the
+    // root and 685.31px inside the container.
+    const declarations = css.match(/--richtext-measure:\s*[^;]+;/g) ?? []
+    expect(declarations).toEqual(['--richtext-measure: 68ch;'])
   })
 
   it.each([

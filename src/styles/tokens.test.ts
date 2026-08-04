@@ -40,12 +40,14 @@ describe('cascade layering', () => {
       if (ch === '{') {
         const text = buffer.replace(/\s+/g, ' ').trim()
         const layer = text.match(/^@layer\s+([\w-]+)$/)?.[1]
-        // A selector prelude is a class, an attribute, or a :where() — never
-        // an at-rule (@layer, @media, @supports, @starting-style, @theme,
-        // @custom-variant all start with @ and are ignored here).
+        // Anything that is not an at-rule is a selector prelude. Matching a
+        // set of expected first characters instead (`/^[.[:]/`) would make a
+        // prelude beginning with a letter invisible — and a bare `h2 { }`
+        // escaping into this file is exactly the rule that must not ship
+        // unlayered.
         if (layer) {
           open.push({ layer, depth })
-        } else if (/^[.[:]/.test(text)) {
+        } else if (text.length > 0 && !text.startsWith('@')) {
           found.push({ selector: text, layer: open.at(-1)?.layer ?? null })
         }
         depth += 1
