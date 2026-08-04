@@ -10,4 +10,10 @@ export const TOKENS = [
   '--duration-expand',
   '--color-backdrop',
   '--color-focus',
+  '--richtext-flow',
+  '--richtext-measure',
+  '--richtext-h1',
+  '--richtext-h2',
+  '--richtext-h3',
+  '--richtext-h4',
 ] as const

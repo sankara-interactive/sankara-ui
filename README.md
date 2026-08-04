@@ -46,6 +46,12 @@ of them in your own `@theme` block, after the import:
 | `--duration-expand` | Open/close duration for `Disclosure` and `Dialog` |
 | `--color-backdrop` | `::backdrop` behind an open `Dialog` |
 | `--color-focus` | Focus ring on `Button`, defaults to `--color-primary` |
+| `--richtext-flow` | Vertical rhythm between rich text blocks |
+| `--richtext-measure` | Line length when `RichText` applies the measure |
+| `--richtext-h1` | `h1` size inside rich text, fluid |
+| `--richtext-h2` | `h2` size inside rich text, fluid |
+| `--richtext-h3` | `h3` size inside rich text, fluid |
+| `--richtext-h4` | `h4` size inside rich text, fluid |
 
 ## Icons
 

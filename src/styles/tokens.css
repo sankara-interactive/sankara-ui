@@ -9,6 +9,12 @@
   --duration-expand: 0.3s;
   --color-backdrop: rgb(0 0 0 / 0.5);
   --color-focus: var(--color-primary);
+  --richtext-flow: 1rem;
+  --richtext-measure: 68ch;
+  --richtext-h1: clamp(1.75rem, 1.35rem + 2vw, 2.5rem);
+  --richtext-h2: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
+  --richtext-h3: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
+  --richtext-h4: clamp(1.125rem, 1.05rem + 0.4vw, 1.25rem);
 }
 
 @layer components {
@@ -250,3 +256,149 @@
     outline-offset: 2px;
   }
 }
+
+/* Rich text: what preflight took away, put back. Preflight sets margin: 0 on
+   everything, font-size/font-weight: inherit on h1-h6, list-style: none on
+   lists, and color/text-decoration: inherit on links — so CMS output, the one
+   markup a consumer never authors, arrives as a grey wall.
+
+   In @layer base, NOT components, and every selector :where()-wrapped for zero
+   specificity. Layers resolve before specificity, so a components-layer rule
+   would beat a project's own @layer base h2 (brillen-werk keeps its heading
+   rules there). Measured: from components ours won at 32px over their 48px;
+   from base with :where() theirs wins and utilities still beat both. These are
+   defaults meant to be stepped over — see the RichText spec's D3. */
+@layer base {
+  :where(.sankara-richtext) > * + * {
+    margin-block-start: var(--richtext-flow);
+  }
+
+  /* Hyphenation on headings only, ported from fgpfister — German compounds
+     ("Unternehmensnachfolge") overflow narrow columns, while plain `auto` also
+     chops short words ("un-sere"), hence the 14-character floor. Does nothing
+     without a lang attribute describing the content; the README says so. */
+  :where(.sankara-richtext) :where(h1) {
+    font-size: var(--richtext-h1);
+    font-weight: 600;
+    line-height: 1.15;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  :where(.sankara-richtext) :where(h2) {
+    font-size: var(--richtext-h2);
+    font-weight: 600;
+    line-height: 1.2;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  :where(.sankara-richtext) :where(h3) {
+    font-size: var(--richtext-h3);
+    font-weight: 600;
+    line-height: 1.25;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  :where(.sankara-richtext) :where(h4) {
+    font-size: var(--richtext-h4);
+    font-weight: 600;
+    line-height: 1.3;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  /* No size: h5 and h6 stay body-sized, distinguished by weight alone. */
+  :where(.sankara-richtext) :where(h5, h6) {
+    font-weight: 600;
+  }
+
+  :where(.sankara-richtext) :where(ul) {
+    list-style-type: disc;
+    padding-inline-start: 1.25em;
+  }
+
+  :where(.sankara-richtext) :where(ol) {
+    list-style-type: decimal;
+    padding-inline-start: 1.5em;
+  }
+
+  :where(.sankara-richtext) :where(ul ul) {
+    list-style-type: circle;
+  }
+
+  :where(.sankara-richtext) :where(ul ul ul) {
+    list-style-type: square;
+  }
+
+  :where(.sankara-richtext) :where(ol ol) {
+    list-style-type: lower-alpha;
+  }
+
+  /* The owl selector only reaches direct children of the container, so list
+     rhythm and nested lists need their own rules — and a tighter gap. */
+  :where(.sankara-richtext) :where(li + li) {
+    margin-block-start: 0.25em;
+  }
+
+  :where(.sankara-richtext) :where(li > ul, li > ol) {
+    margin-block-start: 0.25em;
+  }
+
+  /* Underline is not optional: preflight sets text-decoration: inherit, and a
+     link identified by colour alone fails both discoverability and the
+     colour-is-not-the-only-cue rule. Hover and focus states are the consumer's. */
+  :where(.sankara-richtext) :where(a) {
+    color: var(--color-primary);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  /* Editors can insert a table from the Storyblok toolbar today — the field type
+     is live in 14 schemas — and preflight leaves it borderless. A table wider
+     than its column still overflows; a scroll container changes the
+     accessibility tree and needs a label, so the consumer's renderer owns that. */
+  :where(.sankara-richtext) :where(table) {
+    border-collapse: collapse;
+    inline-size: 100%;
+    text-align: start;
+  }
+
+  :where(.sankara-richtext) :where(th, td) {
+    border: 1px solid var(--color-muted);
+    padding: 0.5em 0.75em;
+  }
+
+  :where(.sankara-richtext) :where(th) {
+    font-weight: 600;
+    text-align: start;
+  }
+
+  :where(.sankara-richtext) :where(hr) {
+    border: 0;
+    border-block-start: 1px solid var(--color-muted);
+  }
+
+  /* A fallback, not a design: the estate's quotes are dedicated bloks with their
+     own components, but the rich text toolbar can still emit one. */
+  :where(.sankara-richtext) :where(blockquote) {
+    border-inline-start: 2px solid var(--color-muted);
+    padding-inline-start: 1em;
+  }
+
+  /* The measure constrains text children, never the container: a capped
+     container would squeeze the tables and media above. [data-wide] is the
+     documented escape hatch for an embedded blok that must run full width.
+     Width only — a constrained block stays start-aligned, and consumers centre
+     it themselves rather than overriding a margin we invented. */
+  :where(.sankara-richtext-measure) > * {
+    max-inline-size: var(--richtext-measure);
+  }
+
+  :where(.sankara-richtext-measure) > :where(table, figure, img, video, iframe, [data-wide]) {
+    max-inline-size: none;
+  }
+}
+/* END rich text */
