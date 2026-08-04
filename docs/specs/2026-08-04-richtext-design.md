@@ -520,18 +520,25 @@ Unchanged from round 1 — this was never the broken case.
 Same checks, in the real `richtext--default` Storybook story (`320px`
 viewport, so the clamp floor applies): `h2` `24px`/`600`, `h3` `20.16px`,
 `h4` `18.08px`, `ul` `disc`, nested `ul` `circle`, `ol` `decimal`, `a`
-`oklch(0.55 0.22 275)`/`underline`, `table`/`th`/`td`/`hr`/`blockquote` all
-as below — all pass, matching the fixture.
+`oklch(0.55 0.22 275)`/`underline`, `table`/`th`/`td` `border-collapse:
+collapse`/`1px solid` — headings, markers, link and table borders all pass,
+matching the bare fixture. The same story also measured `hr` (`border-top:
+1px solid`) and `blockquote` (`border-inline-start: 2px solid`), which the
+bare fixture has no `hr`/`blockquote` in its markup to compare against —
+those two are Storybook-only in this round.
 
-**Unaffected checks, re-confirmed unchanged:**
+**Unaffected checks — not touched by the D3 fix, since none of them compete
+with a preflight type selector:**
 
 | Check | Result |
 | --- | --- |
-| `hr` | pass — `border-top: 1px solid` |
-| `blockquote` | pass — `border-inline-start: 2px solid`, `padding-inline-start: 16px` |
-| D6 measure: paragraph capped near `68ch`, table/container unconstrained | pass — `max-inline-size: 685.312px` on the paragraph (`68ch` at `16px`/system-ui); table width equals container width in every fixture, i.e. unconstrained |
-| D7 flow spacing: every child but the first gets `margin-block-start: var(--richtext-flow)`, including around the table | pass — first child `0px`, every subsequent child `16px`, in both a raw fixture (`h2, ul, ol, p, table`) and the `richtext--default` story (10 children) |
-| List rhythm: `li + li` and `li > ul` get `0.25em` | pass — both `4px` at `16px` font |
+| `hr` border | pass — `border-top: 1px solid`, `richtext--default` story, both rounds |
+| `blockquote` border | pass — `border-inline-start: 2px solid`, `richtext--default` story, both rounds |
+| `blockquote` padding | pass — `padding-inline-start: 16px`, `richtext--default` story, round 1 only; not re-queried in round 2, no reason to expect the fix touched it |
+| D6 measure, the CSS property | pass — `max-inline-size: 685.312px` (`68ch` at `16px`/system-ui) on a paragraph in the project-override fixture, both rounds; also confirmed on a list element in the bare-project fixture, round 2 |
+| D6 measure, visually capping a wide paragraph while table/container stay uncapped | pass — round 1 only: at that session's `1720px` viewport (wider than the `68ch` measure), the paragraph rendered at `685.3125px` while the table and container both rendered at the full `1720px`. Round 2's session viewport (`320px`) was already narrower than the measure, so the container capped the paragraph before the measure could — the property value was reconfirmed there, not the visual cap |
+| D7 flow spacing: every child but the first gets `margin-block-start: var(--richtext-flow)`, including around the table | pass — `richtext--default` story, both rounds: first child `0px`, every subsequent child `16px` (10 children, round 2; matches round 1's identical reading of the same story). No raw fixture carries this measurement in either round — the `h2, ul, ol, p, table` fixture was used for font-size, marker, link and table-border checks in round 2, not for flow spacing |
+| List rhythm: `li + li` and `li > ul` get `0.25em` | pass — `richtext--default` story, round 1 only (`4px` at `16px` font, both selectors); not re-queried in round 2, no reason to expect the fix touched it |
 
 **D8 hyphenation — now demonstrated with the component's real clamp size,
 not a stand-in font-size:**
