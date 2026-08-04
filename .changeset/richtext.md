@@ -13,5 +13,5 @@ selector: tied with preflight, and tied with your own bare `h2`. Beaten by any
 class-scoped rule of yours (`.richtext h2`), by any Tailwind utility, and by
 your own bare element rules — the last only because your CSS loads after ours,
 so import `@sankara-ui/core/styles.css` after `tailwindcss` and before your own
-base styles. Headings hyphenate for German compounds, which needs a `lang`
+base styles. `h1`–`h4` hyphenate for German compounds, which needs a `lang`
 attribute describing the content.
