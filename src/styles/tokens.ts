@@ -20,4 +20,6 @@ export const TOKENS = [
   '--heading-2',
   '--heading-3',
   '--heading-4',
+  '--carousel-dot',
+  '--carousel-dot-active',
 ] as const

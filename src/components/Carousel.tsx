@@ -1,6 +1,13 @@
 'use client'
 
-import { Children, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  Children,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { cn } from '../utilities/cn.js'
 import { slideIndexFromScroll } from '../utilities/carousel.js'
 
@@ -8,9 +15,11 @@ export type CarouselProps = {
   children: ReactNode
   /** Accessible name for the carousel as a whole. Required. */
   label: string
-  /** Slides visible at once. Fractional values peek the next slide. */
+  /** Slides visible at once. Fractional values peek the next slide. Sets
+      `--carousel-per-view` on the root; override it per breakpoint in your own
+      CSS for responsive slide widths. */
   perView?: number
-  /** Gap between slides, in pixels. */
+  /** Gap between slides, in pixels. Sets `--carousel-gap` on the root. */
   gap?: number
   className?: string
 }
@@ -38,7 +47,10 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
     const track = trackRef.current
     if (!track) return
     const first = track.children[0] as HTMLElement | undefined
-    setIndex(slideIndexFromScroll(track.scrollLeft, first?.offsetWidth ?? 0, gap))
+    // The rendered gap can differ from the prop when a consumer overrides
+    // --carousel-gap per breakpoint, so measure it rather than trust the prop.
+    const liveGap = Number.parseFloat(getComputedStyle(track).columnGap) || gap
+    setIndex(slideIndexFromScroll(track.scrollLeft, first?.offsetWidth ?? 0, liveGap))
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -59,14 +71,23 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
       aria-roledescription="carousel"
       aria-label={label}
       onKeyDown={onKeyDown}
-      className={cn('flex flex-col gap-6', className)}
+      className={cn('sankara-carousel flex flex-col gap-6', className)}
+      style={
+        // The props land in PRIVATE variables: an inline declaration of the
+        // public name would beat any consumer stylesheet rule, and
+        // per-breakpoint overrides of --carousel-per-view are the whole point.
+        // The stylesheet reads the public name first, the prop as fallback.
+        {
+          '--_carousel-per-view': perView,
+          '--_carousel-gap': `${gap}px`,
+        } as CSSProperties
+      }
     >
       <div
         ref={trackRef}
         onScroll={onScroll}
         tabIndex={0}
-        className="relative flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ gap }}
+        className="sankara-carousel-track relative flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {slides.map((slide, i) => (
           <div
@@ -74,8 +95,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} von ${slides.length}`}
-            className="shrink-0 snap-start"
-            style={{ flexBasis: `calc((100% - ${(perView - 1) * gap}px) / ${perView})` }}
+            className="sankara-carousel-slide shrink-0 snap-start"
           >
             {slide}
           </div>
@@ -91,8 +111,8 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
             aria-label={`Slide ${i + 1}`}
             aria-current={i === index}
             className={cn(
-              'h-2.5 rounded-card transition-all',
-              i === index ? 'w-8 bg-primary' : 'w-2.5 bg-muted'
+              'sankara-carousel-dot h-2.5 rounded-card transition-all',
+              i === index ? 'w-8' : 'w-2.5'
             )}
           />
         ))}
