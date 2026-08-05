@@ -491,6 +491,18 @@ transition list is what keeps the panel rendered and interactive for the
 full 300 ms exit, exactly as the decision requires and exactly the case that
 is easy to get wrong.
 
+**Observed 2026-08-05** in `next-storyblok-template` (production build,
+Chrome): this package's own `Button` works as `trigger` — but only because
+Button's default branch spreads unknown rest props onto its native `<button>`,
+so the cloned-in `popoverTarget` reaches the DOM. `ButtonProps` does not
+declare popover attributes, so the interop is accidental, not contractual;
+either declare them in `ButtonProps` or document the pairing in both specs.
+Also observed there: `top-start` anchored placement in served output,
+light-dismiss on a trusted outside click (a synthetic `.click()` does not
+light-dismiss — relevant to consumers' tests), and the default panel width
+clamping to the viewport edge on narrow viewports (consumers constrain via
+`className`).
+
 **Unobserved, explicitly:**
 
 - Real Safari 18.0–18.3 — the pre-`position-area`/`position-anchor` engine
