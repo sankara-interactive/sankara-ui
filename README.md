@@ -34,7 +34,10 @@ your own base styles. `RichText`'s defaults are plain element rules that tie
 Tailwind's preflight and tie your own bare `h2`, and source order breaks both
 ties — after preflight so the defaults apply at all, before your CSS so your
 rules beat them. Import it last and your rich text typography stops matching
-the rest of your site.
+the rest of your site. `Heading`'s `.h1`–`.h4` tie your own `.h1`–`.h4` the
+same way — if you write `h1, .h1 { … }`, the `.h1` half ties the package's
+rule at equal specificity, and whichever loads last wins on source order.
+Import the package first and your rule wins, as intended.
 
 ## Theming
 
@@ -59,6 +62,10 @@ of them in your own `@theme` block, after the import:
 | `--richtext-h2` | `h2` size inside rich text, fluid |
 | `--richtext-h3` | `h3` size inside rich text, fluid |
 | `--richtext-h4` | `h4` size inside rich text, fluid |
+| `--heading-1` | `Heading` `.h1` size, fluid — page headings, not rich text |
+| `--heading-2` | `Heading` `.h2` size, fluid |
+| `--heading-3` | `Heading` `.h3` size, fluid |
+| `--heading-4` | `Heading` `.h4` size, fluid |
 
 ## Icons
 
@@ -384,6 +391,84 @@ everywhere — where it is missing, short words break too.
 A table with more columns than fit still overflows. Wrapping it in a scroll
 container changes the accessibility tree and needs a label, so your renderer owns
 that decision.
+
+## Heading
+
+A heading's level in the document outline and its size on screen are two
+different decisions. A card title is an `h3` for screen readers and looks like
+an `h4`. `Heading` makes that two props instead of a tag and a hand-written
+class.
+
+```tsx
+import { Heading } from '@sankara-ui/core'
+
+<Heading level={3} visual={4}>{blok.headline}</Heading>
+// → <h3 class="h4">…</h3>
+```
+
+`level` is required — the outline decision is never implicit. `visual` defaults
+to `level`, and the class is emitted either way, so `<Heading level={2}>`
+renders `<h2 class="h2">`.
+
+### What it styles
+
+`.h1`–`.h4` get a `font-size` from `--heading-1`–`--heading-4` and a
+`line-height`. Nothing else — no weight, family, colour or margin. Those differ
+in every project, and a package default in those columns is something you fight
+rather than build on.
+
+Two consequences worth knowing before you file a bug:
+
+- **Headings render at body weight** until you set one. Tailwind's preflight
+  sets `font-weight: inherit` on `h1`–`h6`. Add `.h1, .h2, .h3, .h4 { font-weight: 700 }`
+  — or whatever your brand uses — to your own base styles.
+- **`.h5` and `.h6` carry no rule at all.** They are emitted as hooks for your
+  own CSS.
+
+### Overriding it
+
+The rules ship in `@layer base` on the class alone — `.h1`, never `h1, .h1` —
+so installing this package changes nothing about headings you wrote yourself.
+Only what `Heading` emits is styled.
+
+To override, define the class in your own stylesheet:
+
+```css
+@layer base {
+  h1, .h1 { @apply font-display text-5xl font-extrabold md:text-7xl; }
+}
+```
+
+That ties the package's rule and wins on source order, which is why the install
+order above matters. A rule of yours that is unlayered, or in `@layer components`
+or `@layer utilities`, wins outright regardless of order.
+
+**One sharp edge.** If you style the bare tag *only* — `h1 { … }` with no `.h1`
+— the package's `.h1` wins, because a class beats a type selector. Add the
+class to your existing selector and you are back in control. Every project this
+package was derived from already writes the pair.
+
+### Levels from a CMS
+
+A Storyblok level field is usually a string option list (`"h2" | "h3" | …`),
+while `level` is a number. Map it at the call site:
+
+```tsx
+<Heading level={Number(blok.level?.slice(1) ?? 2) as 1 | 2 | 3 | 4 | 5 | 6}>
+  {blok.headline}
+</Heading>
+```
+
+The component does not validate at runtime: a TypeScript caller gets a compile
+error, and `level={7}` from untyped JavaScript renders an invalid `<h7>` rather
+than throwing.
+
+### Don't pass a second heading class
+
+`<Heading level={2} visual={4} className="h1">` emits `class="h4 h1"`, and class
+order in the attribute decides nothing — whichever rule sits later in the
+stylesheet wins. `visual` is authoritative only when it is the only heading
+class on the element.
 
 ## Dialog
 

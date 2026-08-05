@@ -11,8 +11,27 @@ describe('token contract', () => {
     expect(missing).toEqual([])
   })
 
-  it('declares the defaults inside an @theme block', () => {
-    expect(css).toMatch(/@theme\s*\{/)
+  it('declares every token inside the @theme block', () => {
+    const open = css.indexOf('@theme')
+    expect(open).toBeGreaterThanOrEqual(0)
+    // Walk to the matching close brace rather than regexing to the first `}`,
+    // which would stop at the first nested rule.
+    let depth = 0
+    let end = -1
+    for (let i = css.indexOf('{', open); i < css.length; i += 1) {
+      if (css[i] === '{') depth += 1
+      else if (css[i] === '}') {
+        depth -= 1
+        if (depth === 0) {
+          end = i
+          break
+        }
+      }
+    }
+    expect(end).toBeGreaterThan(open)
+    const theme = css.slice(open, end)
+    const outside = TOKENS.filter(token => !theme.includes(`${token}:`))
+    expect(outside).toEqual([])
   })
 })
 
@@ -87,6 +106,13 @@ describe('cascade layering', () => {
           /sankara-(button|dialog|disclosure|popover)/.test(rule.selector) &&
           rule.layer !== 'components'
       )
+      .map(rule => rule.selector)
+    expect(misplaced).toEqual([])
+  })
+
+  it('ships the heading defaults in base so a project can override them', () => {
+    const misplaced = rules
+      .filter(rule => /^\.h[1-6]$/.test(rule.selector) && rule.layer !== 'base')
       .map(rule => rule.selector)
     expect(misplaced).toEqual([])
   })

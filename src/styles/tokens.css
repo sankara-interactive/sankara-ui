@@ -15,6 +15,10 @@
   --richtext-h2: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
   --richtext-h3: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
   --richtext-h4: clamp(1.125rem, 1.05rem + 0.4vw, 1.25rem);
+  --heading-1: clamp(2.25rem, 1.73rem + 2.21vw, 3.5rem);
+  --heading-2: clamp(1.875rem, 1.72rem + 0.66vw, 2.25rem);
+  --heading-3: clamp(1.25rem, 0.99rem + 1.1vw, 1.875rem);
+  --heading-4: clamp(1.125rem, 1.07rem + 0.22vw, 1.25rem);
 }
 
 /* --richtext-measure is registered, and it has to be. `ch` is font-relative, so
@@ -472,3 +476,51 @@
   }
 }
 /* END rich text */
+
+/* Page headings. The class only — never `h1, .h1` — because this package is
+   installed into projects that already have their own heading CSS, and a bare
+   tag rule here would restyle every heading on their site. A hand-written
+   <h1> carrying no class is untouched; only what `Heading` emits is styled.
+   See the Heading spec's D4.
+
+   In @layer base, at specificity (0,1,0). That beats Tailwind's preflight
+   (`h1, …, h6 { font-size: inherit; font-weight: inherit }`, (0,0,1), same
+   layer) on specificity alone — unlike the rich text block above, this does
+   not depend on source order to apply at all. A consumer's own `.h1` ties at
+   (0,1,0) and wins on source order per the README's install order; a rule of
+   theirs that is unlayered, or in components/utilities, wins outright.
+
+   Size and line-height only. Weight, family, colour and margin are where the
+   five surveyed projects disagree — 400 to 800, four different families,
+   `margin: 0` to `mb-12` — so a default in those columns is something
+   consumers fight rather than build on. heading-css.test.ts enforces their
+   absence.
+
+   Line-height is not optional: preflight resets none on headings, so a 56px
+   h1 would inherit `html`'s 1.5 and render on 84px leading.
+
+   No .h5/.h6: only one surveyed project sizes them, and an unweighted 16px
+   .h6 is indistinguishable from the body copy beside it. Those classes are
+   emitted as bare hooks. */
+@layer base {
+  .h1 {
+    font-size: var(--heading-1);
+    line-height: 1.1;
+  }
+
+  .h2 {
+    font-size: var(--heading-2);
+    line-height: 1.15;
+  }
+
+  .h3 {
+    font-size: var(--heading-3);
+    line-height: 1.2;
+  }
+
+  .h4 {
+    font-size: var(--heading-4);
+    line-height: 1.3;
+  }
+}
+/* END headings */
