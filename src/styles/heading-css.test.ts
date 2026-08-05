@@ -69,11 +69,17 @@ describe('heading stylesheet', () => {
   })
 
   // D5: the columns the five surveyed projects disagree on stay out.
+  // `margin` also has to catch its logical and physical longhands
+  // (margin-block, margin-inline, margin-top/-bottom/-left/-right, and the
+  // -start/-end forms) — a bare `margin\s*:` match lets `margin-block: 0`
+  // ship undetected. font-weight, font-family and color have no longhand
+  // form, so a literal match is exact for them.
   it.each(['font-weight', 'font-family', 'color', 'margin'])(
     'ships no %s declaration',
     property => {
       const stripped = block.replace(/\/\*[\s\S]*?\*\//g, '')
-      expect(stripped).not.toMatch(new RegExp(`(^|[;{\\s])${property}\\s*:`))
+      const pattern = property === 'margin' ? 'margin(-[a-z]+){0,2}' : property
+      expect(stripped).not.toMatch(new RegExp(`(^|[;{\\s])${pattern}\\s*:`))
     }
   )
 

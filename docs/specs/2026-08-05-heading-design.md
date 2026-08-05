@@ -1,7 +1,8 @@
 # `Heading` — Design
 
 Date: 2026-08-05
-Status: draft; pending implementation
+Status: implemented on `feat/heading`, not yet merged; single-engine
+verification run 2026-08-05 on Chrome 150 only (see Verification)
 Scope: Tier 3 of `next-storyblok-template/docs/enhancement-roadmap.md`, second half
 of the typography work — `RichText` is `docs/specs/2026-08-04-richtext-design.md`
 
@@ -425,12 +426,15 @@ Stylesheet contract test, in the shape of `src/styles/richtext-css.test.ts`:
   block could drift into `components` and no test would fail.
 - **No selector in the block targets a bare tag.** `h1 { }` or `h1, .h1 { }`
   appearing here would restyle every consumer's site, which is precisely what D4
-  refuses. `tokens.test.ts`'s `layerOf` scanner already collects every prelude
-  by scanning for `{` rather than matching an expected first character —
-  written for this exact hazard, per its own comment ("a bare `h2 { }` escaping
-  into this file is exactly the rule that must not ship unlayered") — so the
-  check reuses it rather than writing a second parser. Proven by inserting a
-  bare `h1 { }` and watching it fail.
+  refuses. `heading-css.test.ts` ships its own ~20-line `selectorPreludes`
+  scanner rather than reusing `tokens.test.ts`'s `layerOf` — both collect every
+  prelude by scanning for `{` rather than matching an expected first character,
+  the same technique `layerOf`'s comment describes ("a bare `h2 { }` escaping
+  into this file is exactly the rule that must not ship unlayered"), but they
+  answer different questions: `layerOf` reports which `@layer` a declaration
+  sits in, `selectorPreludes` reports the selector text itself. A second small
+  parser is an acceptable duplication for that difference in what's asked.
+  Proven by inserting a bare `h1 { }` and watching it fail.
 - No `.h5`/`.h6` rule exists (D6).
 - No `font-weight`, `font-family`, `color` or `margin` declaration appears in
   the block (D5) — the invariant that keeps the disputed columns out.

@@ -61,7 +61,12 @@ describe('Heading', () => {
         Wir beraten <em>Sie</em> gern
       </Heading>
     )
-    expect(root(container).querySelector('em')?.textContent).toBe('Sie')
-    expect(root(container).children).toHaveLength(1)
+    const heading = root(container)
+    const em = heading.querySelector('em')
+    expect(em?.textContent).toBe('Sie')
+    // The load-bearing check: `em`'s parent must be the heading element
+    // itself, not an intermediate wrapper. `querySelector('em')` would find
+    // `em` through a wrapper too, so that alone can't tell the two apart.
+    expect(em?.parentElement).toBe(heading)
   })
 })

@@ -34,7 +34,10 @@ your own base styles. `RichText`'s defaults are plain element rules that tie
 Tailwind's preflight and tie your own bare `h2`, and source order breaks both
 ties — after preflight so the defaults apply at all, before your CSS so your
 rules beat them. Import it last and your rich text typography stops matching
-the rest of your site.
+the rest of your site. `Heading`'s `.h1`–`.h4` tie your own `.h1`–`.h4` the
+same way — if you write `h1, .h1 { … }`, the `.h1` half ties the package's
+rule at equal specificity, and whichever loads last wins on source order.
+Import the package first and your rule wins, as intended.
 
 ## Theming
 
