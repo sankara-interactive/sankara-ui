@@ -497,10 +497,12 @@ A consumer-shaped project built in the session scratchpad, never in the repo.
 with `@tailwindcss/cli@4.3.3` — the same version the D4 table was derived from —
 and served over `http://127.0.0.1` so the iframes below are same-origin.
 
-Six entry stylesheets, each following the README's install order
-(`@import "tailwindcss"` → `@import "./tokens.css"` → consumer CSS), compiled to
-its own `out-*.css` and linked from its own `fixture-*.html`. All six share one
-markup file:
+Six entry stylesheets, compiled to their own `out-*.css` and linked from their
+own `fixture-*.html`. Five follow the README's install order
+(`@import "tailwindcss"` → `@import "./tokens.css"` → consumer CSS); the sixth,
+`fixture-twin-before`, reverses the last two on purpose, which is what makes D4
+row 2's conditionality measurable in both directions. All six share one markup
+file:
 
 ```html
 <p id="body">                     <h2 class="h2" id="bare">
@@ -518,12 +520,18 @@ markup file:
 | `fixture-components` | `@layer components { .h2 { font-size: 3rem } }` |
 | `fixture-baretag` | `@layer base { h2 { font-size: 3rem } }` |
 
-The compiled output confirms the premise the whole table rests on: line 3 of
-every `out-*.css` is `@layer theme, base, components, utilities`, and the
-package's `.h1`–`.h4` land inside an `@layer base` block. Worth noting that
-Tailwind emits the physical `@layer utilities` block *before* `@layer
-components`; only the line-3 declaration decides order, which is exactly why
-reading the raw stylesheet settles nothing.
+The compiled output confirms the premise the whole table rests on. Read across
+**all six** outputs, not inferred from one: line 3 of each is
+`@layer theme, base, components, utilities`, and a brace-aware scan for the
+enclosing at-rule of every `.h1`–`.h4` rule puts all four of the package's,
+in every file, inside `@layer base` — the only heading classes found anywhere
+else are the deliberate consumer rules, `.h2` in `@layer components`
+(`out-components.css`) and `.h2` at top level (`out-unlayered.css`).
+
+Worth noting that in all six, Tailwind emits the physical `@layer utilities`
+block *before* `@layer components` (line 180 against 191, or 200 in
+`out-twin-before.css`). Only the line-3 declaration decides order, which is
+exactly why reading the raw stylesheet settles nothing.
 
 Every reading below was taken by forcing layout with `document.body.offsetHeight`
 and calling `getComputedStyle` synchronously. `requestAnimationFrame` was never
@@ -661,9 +669,18 @@ Not measured, and not to be read as passing:
   consumer who redeclares `@layer` order.** D4 excludes all of these from its
   premises; none was tested.
 - **`.h1`, `.h3` and `.h4` against competing consumer rules.** The competing-rule
-  fixtures vary only `.h2`. The other three share the block, the layer and the
-  specificity, so the same cascade applies — but that is an inference, not a
-  reading.
+  fixtures vary only `.h2`. The other three were *read* to share the block, the
+  layer and the specificity, so the same cascade applies — but that last step is
+  an inference, not a reading.
+- **A scrollbar-width correction on the `vw` readings.** Each iframe's
+  `contentWindow.innerWidth` was confirmed to equal its declared width, and every
+  value landed on an exact floor, an exact ceiling, or the hand-computed
+  interpolant — so any scrollbar effect on `vw` is below the resolution of these
+  claims. It was not controlled for, and the viewport section's premise rests on
+  that.
+- **Anything visual.** No screenshot and no visual comparison was taken. Every
+  claim above is a computed-style reading; nothing here says a heading *looks*
+  right.
 
 ## Risks and open questions
 
