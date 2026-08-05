@@ -10,4 +10,7 @@ export { Popover, type PopoverProps, type PopoverPlacement } from './components/
 export { RichText, type RichTextProps } from './components/RichText.js'
 export { Heading, type HeadingProps, type HeadingLevel } from './components/Heading.js'
 export { Dialog, type DialogProps } from './components/Dialog.js'
+// FaIcon has no FontAwesome imports (it only emits the <i> a kit styles), so
+// unlike Icon it is safe in the barrel.
+export { FaIcon, type FaIconProps } from './components/FaIcon.js'
 export { slideIndexFromScroll } from './utilities/carousel.js'

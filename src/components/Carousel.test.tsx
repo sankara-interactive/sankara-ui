@@ -120,4 +120,39 @@ describe('Carousel', () => {
     await userEvent.keyboard('{ArrowRight}')
     expect(screen.getAllByRole('button')[1]).toHaveAttribute('aria-current', 'true')
   })
+
+  it('carries the namespaced root class and publishes perView/gap as PRIVATE variables', () => {
+    const { container } = render(
+      <Carousel label="Referenzen" perView={2.5} gap={20}>
+        {slides}
+      </Carousel>
+    )
+    const root = container.firstElementChild as HTMLElement
+    expect(root.className).toContain('sankara-carousel')
+    expect(root.style.getPropertyValue('--_carousel-per-view')).toBe('2.5')
+    expect(root.style.getPropertyValue('--_carousel-gap')).toBe('20px')
+    // The PUBLIC names must never be set inline — an inline declaration would
+    // beat every consumer stylesheet rule, killing per-breakpoint overrides.
+    expect(root.style.getPropertyValue('--carousel-per-view')).toBe('')
+    expect(root.style.getPropertyValue('--carousel-gap')).toBe('')
+  })
+
+  it('sizes slides via the stylesheet class, not an inline flex-basis', () => {
+    const { container } = render(
+      <Carousel label="Referenzen" perView={3}>
+        {slides}
+      </Carousel>
+    )
+    const slide = container.querySelector('[aria-roledescription="slide"]') as HTMLElement
+    expect(slide.className).toContain('sankara-carousel-slide')
+    expect(slide.style.flexBasis).toBe('')
+  })
+
+  it('colours dots via the namespaced class, not hardcoded utilities', () => {
+    render(<Carousel label="Referenzen">{slides}</Carousel>)
+    for (const dot of screen.getAllByRole('button')) {
+      expect(dot.className).toContain('sankara-carousel-dot')
+      expect(dot.className).not.toMatch(/bg-primary|bg-muted/)
+    }
+  })
 })

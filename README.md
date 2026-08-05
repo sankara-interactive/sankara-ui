@@ -66,6 +66,8 @@ of them in your own `@theme` block, after the import:
 | `--heading-2` | `Heading` `.h2` size, fluid |
 | `--heading-3` | `Heading` `.h3` size, fluid |
 | `--heading-4` | `Heading` `.h4` size, fluid |
+| `--carousel-dot` | Inactive `Carousel` dot, defaults to `--color-muted` |
+| `--carousel-dot-active` | Active `Carousel` dot, defaults to `--color-primary` |
 
 ## Icons
 
@@ -89,6 +91,27 @@ Omit `label` for decorative icons; they are then hidden from assistive tech.
 `label` becomes `aria-label` plus `role="img"` — FontAwesome 7 deprecated its own
 `title` prop in favour of exactly this.
 
+### CMS-driven icon names: `FaIcon`
+
+An `IconDefinition` is a compile-time import, which cannot express an icon
+whose name only exists at runtime — a Storyblok field where an editor types
+`fa-bullseye`. `FaIcon` covers that case: it takes the class-name string and
+emits the `<i>` element a FontAwesome kit (or webfont CSS) styles. You must
+load that kit yourself; without it the element renders empty.
+
+```tsx
+import { FaIcon } from '@sankara-ui/core'
+
+<FaIcon name={blok.icon} size={22} />
+<FaIcon name="fa-brands fa-linkedin-in" label="LinkedIn" />
+```
+
+A bare glyph name gets `fa-solid` prepended; an explicit style prefix
+(`fa-brands …`) is kept. A non-string or empty value renders nothing — CMS
+fields deliver surprises at runtime, and a missing icon beats a crashed
+render. `FaIcon` imports nothing from FontAwesome, so it lives in the main
+entry and needs no peers.
+
 ## Carousel
 
 ```tsx
@@ -101,6 +124,38 @@ import { Carousel } from '@sankara-ui/core'
 
 Static scroll-snap only. Autoplay, looping and synced carousels are not
 included yet.
+
+### Responsive slides
+
+Slide width is computed in the stylesheet from `--carousel-per-view` and
+`--carousel-gap`. Set either in your own CSS and it wins over the props —
+the props travel in private fallback variables precisely so a per-breakpoint
+override needs no `!important` and no selector into the package's markup:
+
+```css
+@media (max-width: 768px) {
+  .my-carousel {
+    --carousel-per-view: 1.2;
+  }
+}
+```
+
+```tsx
+<Carousel label="Referenzen" perView={3} className="my-carousel">
+```
+
+### Dot colours
+
+Dots read `--carousel-dot` / `--carousel-dot-active` (see Theming). Custom
+properties inherit, so a section can retheme its dots contextually — e.g.
+white dots on a violet band:
+
+```css
+.on-violet {
+  --carousel-dot: rgb(255 255 255 / 0.4);
+  --carousel-dot-active: #fff;
+}
+```
 
 ## Button
 

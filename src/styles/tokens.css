@@ -19,6 +19,8 @@
   --heading-2: clamp(1.875rem, 1.72rem + 0.66vw, 2.25rem);
   --heading-3: clamp(1.25rem, 0.99rem + 1.1vw, 1.875rem);
   --heading-4: clamp(1.125rem, 1.07rem + 0.22vw, 1.25rem);
+  --carousel-dot: var(--color-muted);
+  --carousel-dot-active: var(--color-primary);
 }
 
 /* --richtext-measure is registered, and it has to be. `ch` is font-relative, so
@@ -524,3 +526,41 @@
   }
 }
 /* END headings */
+
+/* Carousel. The perView/gap props travel in PRIVATE variables
+   (--_carousel-per-view/--_carousel-gap, set inline on the root); the public
+   --carousel-per-view/--carousel-gap are consumer overrides that win when set,
+   because an inline declaration of the public name would beat every consumer
+   stylesheet rule — and per-breakpoint overrides are the point:
+
+     @media (max-width: 768px) {
+       .my-carousel { --carousel-per-view: 1.2; }
+     }
+
+   Dot colours read the two @theme tokens above. Custom properties inherit, so
+   a section can retheme its dots contextually (e.g. white on a violet band)
+   by setting --carousel-dot / --carousel-dot-active on any ancestor. */
+@layer components {
+  .sankara-carousel-track {
+    gap: var(--carousel-gap, var(--_carousel-gap, 16px));
+  }
+
+  .sankara-carousel-slide {
+    flex-basis: calc(
+      (
+          100% - (var(--carousel-per-view, var(--_carousel-per-view, 1)) - 1) *
+            var(--carousel-gap, var(--_carousel-gap, 16px))
+        ) /
+        var(--carousel-per-view, var(--_carousel-per-view, 1))
+    );
+  }
+
+  .sankara-carousel-dot {
+    background: var(--carousel-dot);
+  }
+
+  .sankara-carousel-dot[aria-current='true'] {
+    background: var(--carousel-dot-active);
+  }
+}
+/* END carousel */
