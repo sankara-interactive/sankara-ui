@@ -664,8 +664,18 @@ Not measured, and not to be read as passing:
   applied on top of the package font-size in served output; real `Heading`
   React output (`<h2 class="h2">`, `<h3 class="h4">`) resolved the clamp
   sizes (30.82px at ~1280 viewport). That consumer had no pre-existing `.hN`
-  class (D2's collision census came back empty there), so the D2 risk remains
-  unobserved against a hostile legacy `.hN`.
+  class (D2's collision census came back empty there), so that run left the
+  D2 risk unobserved against a pre-existing `.hN`. **Observed 2026-08-05
+  (second consumer, numbers.ch)**: a real legacy `.h1–.h3` scale — family,
+  weight 800, own clamps, letter-spacing — living in `@layer components`
+  coexists exactly as D4's layer-order row predicts: the consumer's rules win
+  deterministically, so the collision is benign in that direction. The
+  retrofit reconciled rather than fought — font-sizes moved into
+  `--heading-1..3`, everything tokens can't express stayed in the consumer's
+  rules — with computed h1/h2 styles byte-identical to the pre-retrofit
+  baseline in a production build. Still unobserved: a consumer whose `.hN`
+  sits in an *earlier or same* layer with a semantically unrelated meaning —
+  the silent-override direction D2 warns about.
 - ~~**The package's built `dist/styles.css`.** The fixture imports a verbatim copy
   of `src/styles/tokens.css`; `scripts/copy-styles.mjs` was not in the loop.~~
   **Observed 2026-08-05**: the template consumes the published npm tarball's
