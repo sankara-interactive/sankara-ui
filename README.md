@@ -29,6 +29,13 @@ Then in your global stylesheet — **both lines are required**:
 Tailwind v4 does not scan `node_modules` by default. Without the `@source`
 line the components render completely unstyled, with no error.
 
+**Order matters.** Import the package stylesheet after `tailwindcss` and before
+your own base styles. `RichText`'s defaults are plain element rules that tie
+Tailwind's preflight and tie your own bare `h2`, and source order breaks both
+ties — after preflight so the defaults apply at all, before your CSS so your
+rules beat them. Import it last and your rich text typography stops matching
+the rest of your site.
+
 ## Theming
 
 `@sankara-ui/core/styles.css` ships neutral defaults for every token. Override any
@@ -46,6 +53,12 @@ of them in your own `@theme` block, after the import:
 | `--duration-expand` | Open/close duration for `Disclosure` and `Dialog` |
 | `--color-backdrop` | `::backdrop` behind an open `Dialog` |
 | `--color-focus` | Focus ring on `Button`, defaults to `--color-primary` |
+| `--richtext-flow` | Vertical rhythm between rich text blocks |
+| `--richtext-measure` | Line length when `RichText` applies the measure |
+| `--richtext-h1` | `h1` size inside rich text, fluid |
+| `--richtext-h2` | `h2` size inside rich text, fluid |
+| `--richtext-h3` | `h3` size inside rich text, fluid |
+| `--richtext-h4` | `h4` size inside rich text, fluid |
 
 ## Icons
 
@@ -273,6 +286,104 @@ both `position-area`, which Firefox ships in 147, and `position-anchor`, whose
 Firefox support is partial before 151. Without them the panel is a full-bleed
 sheet at the bottom of the viewport instead of an anchored dropdown —
 deliberately a different layout, never a misplaced one.
+
+## RichText
+
+Tailwind's preflight strips margins, list markers, heading sizes and link
+underlines from every element. That is fine for markup you author and wrong for
+CMS output, which nobody does. `RichText` puts the semantics back.
+
+```tsx
+import { RichText } from '@sankara-ui/core'
+
+<RichText>
+  <RichTextRenderer text={blok.text} />
+</RichText>
+```
+
+The class does the work, so if you already have a wrapper you can skip the
+component entirely:
+
+```tsx
+<article className="sankara-richtext sankara-richtext-measure">…</article>
+```
+
+Use the class rather than the component if your renderer hands you an HTML
+*string* instead of nodes — `children` is required and takes React nodes:
+
+```tsx
+<div className="sankara-richtext sankara-richtext-measure"
+     dangerouslySetInnerHTML={{ __html: html }} />
+```
+
+Covered: block rhythm, `h1`–`h4` (fluid sizes), `h5`/`h6` (weight only), lists
+including nesting, links, tables, `hr`, an image inside a paragraph or a list
+item or a cell (preflight makes those block-level, which breaks the line in
+two), and a minimal `blockquote` fallback. Not covered, and rendering as plain
+body text if they appear: `code`/`pre`, `figure`/`figcaption`, and anything
+Storyblok adds later. Embedded bloks pass through untouched but do receive
+block rhythm as siblings.
+
+**The content must be direct children of the container.** Block rhythm and the
+measure both target direct children, so one wrapping element between the
+container and the content silently removes all spacing and moves the measure
+onto the wrapper. If your `RichTextRenderer` returns a root element rather than
+a fragment, put the class on that element instead of nesting it.
+
+### Overriding it
+
+Everything ships in `@layer base`, with `:where()` on the container class only:
+`:where(.sankara-richtext) h2`. The class contributes no specificity, so each
+rule lands at the specificity of a bare `h2` — tied with Tailwind's preflight
+and tied with your own bare element rules. Three things beat it:
+
+- a class-scoped rule of yours, e.g. `.richtext h2 { … }`
+- any Tailwind utility
+- a bare element rule of yours, e.g. `@layer base { h2 { … } }` — but *only*
+  because your CSS loads after ours. That tie is broken by source order alone,
+  so it depends on the install order above.
+
+Tune the rest with the `--richtext-*` tokens in your own `@theme`.
+
+**If your headings look wrong inside rich text**, check that import order first.
+Half-overridden typography is the usual symptom: scope some of your heading
+declarations to a class (`.richtext h2 { font-size: 4rem }`) and leave the rest
+bare, and the scoped ones win while the bare ones lose to ours — your size with
+our weight.
+
+### Measure
+
+`measure` constrains text to `--richtext-measure` (`68ch`) and is on by default.
+It applies to the text children, not the container, so tables, figures, images,
+video, iframes and anything marked `data-wide` still use the full width. Pass
+`measure={false}` to drop it. It sets width only — centre the column yourself
+if you want that.
+
+`ch` is the width of a "0" in your typeface, so `68ch` is a different line length
+in every brand. Lower the token if your face is wide. It is resolved once, on the
+root element, and inherited as a fixed length — so every child gets the same
+measure regardless of its own font, and a webfont swapping in reflows the whole
+column at once rather than each element separately. That reflow is real: the same
+`68ch` measured 532px in monospace, 583px in Impact and 668px in Georgia, so
+`font-display: swap` moves your line length by more than 100px when the face
+lands.
+
+### Hyphenation needs `lang`
+
+`h1`–`h4` hyphenate, which German compounds need — "Unter­nehmens­nachfolge"
+otherwise overflows a narrow column. This does nothing without a `lang` attribute,
+and the nearest one must describe the *content*: a German page with a French rich
+text field needs `<RichText lang="fr">`, not the page's `lang`. `lang` passes
+through like any other prop.
+
+`hyphenate-limit-chars`, which keeps short words whole, is not supported
+everywhere — where it is missing, short words break too.
+
+### Wide tables
+
+A table with more columns than fit still overflows. Wrapping it in a scroll
+container changes the accessibility tree and needs a label, so your renderer owns
+that decision.
 
 ## Dialog
 

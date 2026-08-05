@@ -9,6 +9,41 @@
   --duration-expand: 0.3s;
   --color-backdrop: rgb(0 0 0 / 0.5);
   --color-focus: var(--color-primary);
+  --richtext-flow: 1rem;
+  --richtext-measure: 68ch;
+  --richtext-h1: clamp(1.75rem, 1.35rem + 2vw, 2.5rem);
+  --richtext-h2: clamp(1.5rem, 1.2rem + 1.4vw, 2rem);
+  --richtext-h3: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
+  --richtext-h4: clamp(1.125rem, 1.05rem + 0.4vw, 1.25rem);
+}
+
+/* --richtext-measure is registered, and it has to be. `ch` is font-relative, so
+   an unregistered custom property carrying `68ch` is substituted as *tokens*
+   and re-resolved against each element that reads it: the same declaration then
+   means a different length on every child, and headings — bigger, bolder, wider
+   "0" — get a wider measure than the paragraphs beside them. Measured in a
+   compiled Tailwind 4.3.3 fixture in Chrome 150, one 1400px container, before
+   this registration: p and ul 685.31px, h5 724.98px, h4 859.71px, h3 979.76px,
+   h2 1179.75px, h1 1429.42px — six different measures in one column. The
+   defect the measure exists to prevent was unfixed for exactly the elements it
+   shows on most. After: all seven 685.31px.
+   Registering it as a <length> makes the value compute where it is *declared* —
+   once, on the root, against the root font — and inherit down as an absolute
+   length, so every child clamps to the same measure. The declaration stays
+   `68ch` in @theme: a character count is the intent, and it stays overridable
+   from a consumer's own @theme, which a re-declaration on the container would
+   silently outrank (@layer base beats @layer theme).
+   initial-value is deliberately not 0px. It only applies if the @theme
+   declaration is missing or a consumer supplies a non-<length> value, and in
+   that case a 0px max-inline-size would collapse every child to nothing —
+   broken layout, which the D4 contract says this stylesheet never degrades to.
+   100vw is effectively "unconstrained" instead.
+   Without @property support the behaviour degrades to the per-child resolution
+   measured above: ragged, but readable. */
+@property --richtext-measure {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 100vw;
 }
 
 @layer components {
@@ -250,3 +285,190 @@
     outline-offset: 2px;
   }
 }
+
+/* Rich text: what preflight took away, put back. Preflight sets margin: 0 on
+   everything, font-size/font-weight: inherit on h1-h6, list-style: none on
+   lists, and color/text-decoration: inherit on links — so CMS output, the one
+   markup a consumer never authors, arrives as a grey wall.
+
+   In @layer base, NOT components — but preflight's own resets live in
+   @layer base too, so layer order does not separate us from them; a rule
+   fully wrapped in :where() (specificity (0,0,0)) loses outright to
+   preflight's `h1, h2, ..., h6 { font-size: inherit }` / `ol, ul
+   { list-style: none }` / `a { color: inherit }` (specificity (0,0,1) each),
+   and the defaults never apply in a bare project. Measured on a compiled
+   Tailwind 4.3.3 fixture in Chrome: fully-:where()-wrapped h2 computed
+   16px/400 there — preflight won.
+
+   The fix: :where() stays on the container only, so .sankara-richtext /
+   .sankara-richtext-measure add zero specificity, but the element token
+   after it is bare — h2, not :where(h2) — landing the compound selector at
+   (0,0,1), tied with preflight. Tied selectors in the same layer resolve by
+   source order, and this stylesheet is imported after Tailwind's preflight,
+   so we win there: h2 now computes 32px/600 in a bare project. A project's
+   own bare `h2` rule ties us at the same (0,0,1) in turn, and — per the
+   documented install order — its import comes after ours, so source order
+   lets it win the same way: 48px/900 beats our 32px/600. These are defaults
+   meant to be stepped over, not a floor preflight or the consumer can't
+   reach — see the RichText spec's D3.
+
+   Comma-grouped tokens use :is(), not :where(): :is() takes the specificity
+   of its costliest argument rather than zeroing it, so `:is(h5, h6)` still
+   lands at (0,0,1) like every other bare tag here. `:is(table, figure, img,
+   video, iframe, [data-wide])` lands at (0,1,0) — deliberately higher, since
+   it must out-rank the plain `> *` measure rule above it, not just tie
+   preflight. This entire scheme depends on the consumer loading our
+   stylesheet before their own rules — the install order the README
+   documents — because it is source order, not the layer or the :where(),
+   that lets a project's own heading rules win. */
+@layer base {
+  :where(.sankara-richtext) > * + * {
+    margin-block-start: var(--richtext-flow);
+  }
+
+  /* Hyphenation on headings only, ported from fgpfister — German compounds
+     ("Unternehmensnachfolge") overflow narrow columns, while plain `auto` also
+     chops short words ("un-sere"), hence the 14-character floor. Does nothing
+     without a lang attribute describing the content; the README says so. */
+  :where(.sankara-richtext) h1 {
+    font-size: var(--richtext-h1);
+    font-weight: 600;
+    line-height: 1.15;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  :where(.sankara-richtext) h2 {
+    font-size: var(--richtext-h2);
+    font-weight: 600;
+    line-height: 1.2;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  :where(.sankara-richtext) h3 {
+    font-size: var(--richtext-h3);
+    font-weight: 600;
+    line-height: 1.25;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  :where(.sankara-richtext) h4 {
+    font-size: var(--richtext-h4);
+    font-weight: 600;
+    line-height: 1.3;
+    hyphens: auto;
+    hyphenate-limit-chars: 14 5 5;
+  }
+
+  /* No size: h5 and h6 stay body-sized, distinguished by weight alone. */
+  :where(.sankara-richtext) :is(h5, h6) {
+    font-weight: 600;
+  }
+
+  :where(.sankara-richtext) ul {
+    list-style-type: disc;
+    padding-inline-start: 1.25em;
+  }
+
+  :where(.sankara-richtext) ol {
+    list-style-type: decimal;
+    padding-inline-start: 1.5em;
+  }
+
+  :where(.sankara-richtext) ul ul {
+    list-style-type: circle;
+  }
+
+  :where(.sankara-richtext) ul ul ul {
+    list-style-type: square;
+  }
+
+  :where(.sankara-richtext) ol ol {
+    list-style-type: lower-alpha;
+  }
+
+  /* The owl selector only reaches direct children of the container, so list
+     rhythm and nested lists need their own rules — and a tighter gap. */
+  :where(.sankara-richtext) li + li {
+    margin-block-start: 0.25em;
+  }
+
+  :where(.sankara-richtext) :is(li > ul, li > ol) {
+    margin-block-start: 0.25em;
+  }
+
+  /* Underline is not optional: preflight sets text-decoration: inherit, and a
+     link identified by colour alone fails both discoverability and the
+     colour-is-not-the-only-cue rule. Hover and focus states are the consumer's. */
+  :where(.sankara-richtext) a {
+    color: var(--color-primary);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  /* Editors can insert a table from the Storyblok toolbar today — the field type
+     is live in 14 schemas — and preflight leaves it borderless. A table wider
+     than its column still overflows; a scroll container changes the
+     accessibility tree and needs a label, so the consumer's renderer owns that.
+     No text-align here. Nothing strips a table's alignment — neither the UA nor
+     preflight sets one — so `text-align: start` restored nothing and instead
+     overrode *inherited* alignment: a table inside a consumer's `text-center`
+     block computed `start` while everything around it centred. border-collapse
+     is already in preflight and kept only so the borders below still collapse
+     for a consumer who replaces preflight with their own reset. */
+  :where(.sankara-richtext) table {
+    border-collapse: collapse;
+    inline-size: 100%;
+  }
+
+  :where(.sankara-richtext) :is(th, td) {
+    border: 1px solid var(--color-muted);
+    padding: 0.5em 0.75em;
+  }
+
+  :where(.sankara-richtext) th {
+    font-weight: 600;
+    text-align: start;
+  }
+
+  :where(.sankara-richtext) hr {
+    border: 0;
+    border-block-start: 1px solid var(--color-muted);
+  }
+
+  /* A fallback, not a design: the estate's quotes are dedicated bloks with their
+     own components, but the rich text toolbar can still emit one. */
+  :where(.sankara-richtext) blockquote {
+    border-inline-start: 2px solid var(--color-muted);
+    padding-inline-start: 1em;
+  }
+
+  /* Preflight sets `img, svg, video, canvas, audio, iframe, embed, object
+     { display: block }`, which is right for authored markup and wrong for an
+     image an editor dropped *inside* a paragraph: it breaks the line in two.
+     The only place uncovered preflight damage produced broken layout rather
+     than plain body text, so it is covered rather than documented away. Scoped
+     to inline contexts, so a standalone image between blocks stays a block. */
+  :where(.sankara-richtext) :is(p, li, td, th) img {
+    display: inline-block;
+  }
+
+  /* The measure constrains text children, never the container: a capped
+     container would squeeze the tables and media above. [data-wide] is the
+     documented escape hatch for an embedded blok that must run full width.
+     Width only — a constrained block stays start-aligned, and consumers centre
+     it themselves rather than overriding a margin we invented.
+     Every child reads the same inherited length, not its own re-resolution of
+     `68ch` — see the @property registration at the top of this file. */
+  :where(.sankara-richtext-measure) > * {
+    max-inline-size: var(--richtext-measure);
+  }
+
+  :where(.sankara-richtext-measure) > :is(table, figure, img, video, iframe, [data-wide]) {
+    max-inline-size: none;
+  }
+}
+/* END rich text */
