@@ -484,6 +484,187 @@ expensively:
 
 Single-engine results are to be recorded as single-engine.
 
+## Verification
+
+Executed 2026-08-05. **Single engine: Chrome 150.0.7871.115** on macOS (Darwin
+25.5.0). Results are recorded as single-engine.
+
+### Fixture
+
+A consumer-shaped project built in the session scratchpad, never in the repo.
+`tokens.css` is a byte-identical copy of `src/styles/tokens.css`
+(md5 `45df468257fee4ee18fd8938d4755d3a`, verified against the source). Compiled
+with `@tailwindcss/cli@4.3.3` — the same version the D4 table was derived from —
+and served over `http://127.0.0.1` so the iframes below are same-origin.
+
+Six entry stylesheets, each following the README's install order
+(`@import "tailwindcss"` → `@import "./tokens.css"` → consumer CSS), compiled to
+its own `out-*.css` and linked from its own `fixture-*.html`. All six share one
+markup file:
+
+```html
+<p id="body">                     <h2 class="h2" id="bare">
+<h3 class="h4" id="demoted">      <h1 id="untouched">
+<h2 class="h2 text-xs" id="utility">  <h5 class="h5" id="hook">
+<h1 class="h1" id="clamp1">       <h3 class="h3" id="three">
+```
+
+| Fixture | Consumer rule appended after `tokens.css` |
+| --- | --- |
+| `fixture-bare` | none |
+| `fixture-twin` | `@layer base { h2, .h2 { font-size: 3rem } }` |
+| `fixture-twin-before` | the same twin, imported **before** `tokens.css` |
+| `fixture-unlayered` | `.h2 { font-size: 3rem }`, unlayered |
+| `fixture-components` | `@layer components { .h2 { font-size: 3rem } }` |
+| `fixture-baretag` | `@layer base { h2 { font-size: 3rem } }` |
+
+The compiled output confirms the premise the whole table rests on: line 3 of
+every `out-*.css` is `@layer theme, base, components, utilities`, and the
+package's `.h1`–`.h4` land inside an `@layer base` block. Worth noting that
+Tailwind emits the physical `@layer utilities` block *before* `@layer
+components`; only the line-3 declaration decides order, which is exactly why
+reading the raw stylesheet settles nothing.
+
+Every reading below was taken by forcing layout with `document.body.offsetHeight`
+and calling `getComputedStyle` synchronously. `requestAnimationFrame` was never
+awaited — the automated tab reported `document.visibilityState === "hidden"`
+throughout, confirming the carried-over process note.
+
+### The bare project
+
+`fixture-bare.html`, loaded top-level at **viewport 1720×1289**, root font-size
+16px. At that width every clamp is at its ceiling.
+
+| Element | `font-size` | `line-height` | `font-weight` |
+| --- | --- | --- | --- |
+| `#body` `p` | 16px | 24px | 400 |
+| `#bare` `h2.h2` | **36px** | 41.4px (1.15) | 400 |
+| `#demoted` `h3.h4` | **20px** | 26px (1.3) | 400 |
+| `#untouched` `h1`, no class | **16px** | 24px (1.5, inherited) | 400 |
+| `#utility` `h2.h2.text-xs` | 12px | 16px | 400 |
+| `#hook` `h5.h5` | 16px | 24px | 400 |
+| `#clamp1` `h1.h1` | 56px | 61.6px (1.1) | 400 |
+| `#three` `h3.h3` | 30px | 36px (1.2) | 400 |
+
+This settles four claims at once. `#bare` is at the `--heading-2` ceiling, not
+preflight's inherited 16px — D4's first row, decided on specificity inside a
+shared `@layer base`. `#untouched` is at 16px/24px, identical to the `p` beside
+it: the package does not touch a classless heading. `#hook` is at body size,
+confirming D6 ships no `.h5` rule. And every element computes 400 — D5 ships no
+weight, and preflight's `font-weight: inherit` stands.
+
+Line-height comes from the `.hN` rules, not from `html`'s 1.5: 61.6/56 = 1.1,
+41.4/36 = 1.15, 36/30 = 1.2, 26/20 = 1.3. The classless `#untouched` is the
+control at 24/16 = 1.5, which is what an unstyled 56px `h1` would have rendered
+on.
+
+### D4's competing-rule table
+
+`#bare` (`h2.h2`) in each fixture, all loaded top-level at **1720px**. `3rem` is
+48px at a 16px root; ours is 36px at this width.
+
+| Consumer rule | `#bare` measured | Winner | D4 predicted |
+| --- | --- | --- | --- |
+| none (preflight only) — `fixture-bare` | 36px | ours | ours — **agrees** |
+| `@layer base { h2, .h2 }` after ours — `fixture-twin` | 48px | theirs | theirs — **agrees** |
+| the same twin **before** ours — `fixture-twin-before` | 36px | ours | conditional on order — **agrees** |
+| unlayered `.h2` — `fixture-unlayered` | 48px | theirs | theirs — **agrees** |
+| `@layer components { .h2 }` — `fixture-components` | 48px | theirs | theirs — **agrees** |
+| `@layer base { h2 }`, bare tag only — `fixture-baretag` | **36px** | **ours** | ours — **agrees, and this is the defect** |
+
+Row three is the one the spec hedged on ("theirs wins, *conditionally*"). The
+hedge is correct and now measured in both directions: the identical twin rule
+wins at 48px when imported after the package and loses at 36px when imported
+before it. Nothing about the rule changes — only the README's install order.
+
+`#utility` (`h2.h2.text-xs`) measured 12px/16px in `fixture-bare`,
+`fixture-twin`, `fixture-twin-before`, `fixture-components` and
+`fixture-baretag`: the utility beats both the package and a consumer's
+`@layer components` rule, per D4's fifth row.
+
+**One consequence D4 does not state.** In `fixture-unlayered`, `#utility`
+measured **48px**/64px — the consumer's unlayered `.h2` beat `text-xs` as well
+as the package. That follows from the same rule that makes their override work
+(unlayered beats every layered rule), but it means the row-3 escape hatch costs
+a consumer their own Tailwind utilities on that selector. It contradicts nothing
+in the spec; it is a cost the spec does not price.
+
+### The bare-tag hazard, measured
+
+The most important row, and it behaves exactly as the Risks entry says.
+
+In `fixture-baretag` the consumer writes `@layer base { h2 { font-size: 3rem } }`
+after the package's import — the strongest position a bare-tag rule can occupy —
+and `#bare` (`<h2 class="h2">`) still computes **36px**. The package wins over
+the consumer's own heading CSS, silently.
+
+The control that proves the rule is live rather than absent: an `<h2>` carrying
+**no class** was appended to `fixture-baretag.html`'s `<main>` at runtime via
+`javascript_tool` (no recompile — a classless element generates no utilities) and
+computed **48px**/72px. Same stylesheet, same page, same layer: the consumer's
+rule applies everywhere the package's class is absent, and loses everywhere it is
+present. `(0,1,0)` beats `(0,0,1)` regardless of source order.
+
+This is now measured, not reasoned about. The Risks entry stands as written.
+
+### The clamp across viewports
+
+`resize_window` was not used. `iframe-host.html` embeds `fixture-bare.html` in
+same-origin iframes of fixed width; `vw` resolves against an iframe's own initial
+containing block, so each is a genuinely distinct CSS viewport. Widths 375 and
+1400 were declared in the file; the 800 column was produced by an iframe appended
+at runtime via `javascript_tool` and awaiting its `load` event. Each iframe's
+`contentWindow.innerWidth` was read and confirmed to equal its declared width.
+The host tab's own viewport stayed at 1720px throughout.
+
+| Element | 375px | 800px | 1400px |
+| --- | --- | --- | --- |
+| `h1.h1` | 36px / 39.6px | 45.36px / 49.896px | 56px / 61.6px |
+| `h2.h2` | 30px / 34.5px | 32.8px / 37.72px | 36px / 41.4px |
+| `h3.h3` | 20px / 24px | 24.64px / 29.568px | 30px / 36px |
+| `h3.h4` | 18px / 23.4px | 18.88px / 24.544px | 20px / 26px |
+| `h5.h5` | 16px / 24px | — | 16px / 24px |
+| `h1`, no class | 16px / 24px | — | 16px / 24px |
+
+The values **move**, and they move by interpolation rather than by stepping: the
+800px column is neither endpoint, and `--heading-1` there computes 45.36px
+against `1.73rem + 2.21vw` = 27.68 + 17.68 = 45.36px exactly. The 375px column
+reproduces the Tokens table's floors (36 / 30 / 20 / 18) and 1400px — comfortably
+past the 1281–1309px crossovers — reproduces its ceilings (56 / 36 / 30 / 20).
+
+`h5.h5` and the classless `h1` do not move, which is the point of listing them:
+they are at 16px because nothing sizes them, in both viewports.
+
+### Unobserved
+
+Not measured, and not to be read as passing:
+
+- **Every other engine.** Chrome 150 only. Nothing here says anything about
+  Gecko or WebKit.
+- **Whether a real consumer's bundler preserves the import order these fixtures
+  assume.** The fixtures compile a hand-written entry with `@tailwindcss/cli`
+  directly, so the order holds by construction. Next 16 / PostCSS / Turbopack
+  were not exercised, and D4's row three depends entirely on that order.
+- **The package's built `dist/styles.css`.** The fixture imports a verbatim copy
+  of `src/styles/tokens.css`; `scripts/copy-styles.mjs` was not in the loop.
+- **The `Heading` component itself.** The fixtures use hand-written markup
+  matching its documented output (`<h3 class="h4">`), not React render output.
+  The component's own contract is covered by its jsdom tests.
+- **A root font-size other than 16px.** brillen-werk's `html { font-size: 18px }`
+  at `md` shifts every crossover, as the Tokens section says; not measured.
+- **The exact ceiling-engagement widths** (1281 / 1285 / 1287 / 1309px). Only
+  375, 800 and 1400 were sampled.
+- **A consumer overriding `--heading-N` from their own `@theme`,** or supplying
+  an invalid value.
+- **A consumer-defined `.h5`/`.h6` rule.** Only the no-rule case was measured.
+- **`!important`, inline styles, active transitions, `@scope` proximity, and a
+  consumer who redeclares `@layer` order.** D4 excludes all of these from its
+  premises; none was tested.
+- **`.h1`, `.h3` and `.h4` against competing consumer rules.** The competing-rule
+  fixtures vary only `.h2`. The other three share the block, the layer and the
+  specificity, so the same cascade applies — but that is an inference, not a
+  reading.
+
 ## Risks and open questions
 
 - **The package emits an unnamespaced class it does not own (D2).** A consumer
