@@ -1,5 +1,36 @@
 # @sankara-ui/core
 
+## 0.7.0
+
+### Minor Changes
+
+- 635b022: Carousel: namespaced classes, token-driven dots, responsive slide widths.
+
+  The root now carries `sankara-carousel`, slides `sankara-carousel-slide`, dots
+  `sankara-carousel-dot`. Slide width moved from an inline `flex-basis` into the
+  stylesheet, computed from `--carousel-per-view` / `--carousel-gap` (published
+  on the root from the props) — override the variable per breakpoint in your own
+  CSS for responsive slides. Dot colours moved from hardcoded `bg-primary`/
+  `bg-muted` utilities to two new inheritable theme tokens, `--carousel-dot` and
+  `--carousel-dot-active`, so a section can retheme its dots contextually.
+
+  Requires the package stylesheet (already mandatory per the install
+  instructions): a consumer rendering Carousel without
+  `@import '@sankara-ui/core/styles.css'` previously got sized slides from the
+  inline style and now gets unsized ones. Defaults are visually unchanged.
+
+  First-consumer evidence: both of numbers.ch's migrated carousels needed
+  consumer-side `!important` bridges for exactly these two gaps
+  (`docs/specs/2026-08-05-numbers-retrofit-findings.md`).
+
+- 635b022: New `FaIcon`: webfont FontAwesome icon addressed by class-name string, for
+  icon names that only exist at runtime — CMS fields where editors type `fa-*`
+  names. Emits the `<i>` element a FontAwesome kit styles (the consumer loads
+  the kit); a bare glyph name gets `fa-solid` prepended, a non-string or empty
+  value renders nothing. No FontAwesome imports, so it exports from the main
+  entry with no peer requirements. `Icon` (`@sankara-ui/core/icon`) remains the
+  SVG path for code-authored icons.
+
 ## 0.6.0
 
 ### Minor Changes
