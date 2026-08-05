@@ -16,7 +16,7 @@ and to screen readers; the visual level answers to the layout.
 Every project surveyed solved this, independently, with the same trick: define
 the appearance under a class as well as the tag, then write the tag and the
 class separately at the call site. Nobody named the pattern, so nobody typechecks
-it, and 101 call sites across five projects spell it out by hand.
+it, and 54 call sites across five projects spell the mismatch out by hand.
 
 ## Evidence base
 
@@ -32,20 +32,34 @@ Five projects, five implementations of the same idea.
 
 Six findings:
 
-1. **The mechanism is unanimous, 5 of 5.** Four write the `hN, .hN` twin
+1. **All five make the appearance reachable by class.** Four write the `hN, .hN` twin
    verbatim; numbers.ch writes the class half only. No project styles the tag
    alone.
 
-2. **The call site is unanimous too, 101 times over.** Counted by grepping for a
-   visual heading class in a `className`: brillen-werk 13, fgpfister 14, fairmed
-   35, nuwa 10, numbers 29. The dominant shape is `<h3 className="h4">` — a card
-   title, demoted visually and kept correct in the outline:
+2. **Two thirds of heading call sites carry a level the tag does not.** 98 sites
+   across the five projects put a heading class on an element, counted by tag
+   *and* class together — an earlier count of 101 was by class alone, which
+   proves only that the classes occur, not that the two levels differ:
+
+   | Pair | Count |
+   | --- | --- |
+   | mismatched — `h3`+`.h4` 29, `h2`+`.h4` 15, `h2`+`.h3` 6, `h3`+`.h5` 2, `h3`+`.h6` 1, `h2`+`.h1` 1 | **54** |
+   | matched — `h2`+`.h2` 23, `h3`+`.h3` 4, `h1`+`.h1` 2 | **29** |
+   | non-heading element — `div` 8, `p` 5, `span` 2 | **15** |
+
+   54 of the 83 sites on an actual heading element are the split in action, and
+   one shape accounts for more than half of those — a card title demoted
+   visually, kept correct in the outline:
 
    ```tsx
    <h3 className="h4 group-hover:text-brown transition duration-300">{blok.headline}</h3>
    ```
 
    (`brillen-werk.ch/components/nestables/Card.tsx:23`)
+
+   The 29 matched sites are not surplus: D3 emits the class there too, which is
+   exactly what numbers.ch requires (finding 4). The 15 non-heading sites are
+   finding 6, and D5 excludes them.
 
 3. **The values agree on nothing.** Font weight spans `font-normal` (fgpfister,
    whose comment records that Serifa ships a single face and sets the weight
@@ -73,14 +87,24 @@ Six findings:
 
 ## Decisions
 
-### D1 — The component owns the split; the project owns the look
+### D1 — The component owns the split; the project owns everything but scale
 
 `Button` ships no colours or padding because a consumer authors every button.
 `RichText` does ship sizes because nobody authors CMS output and preflight has
-stripped it. Page headings are the `Button` case — every one is authored — so
-the component ships the *mechanism* and the project keeps the *appearance*.
+stripped it. Page headings sit between the two: every one is authored, so the
+mechanism is the point — but preflight strips their size and weight just as
+thoroughly, and a package that emits `class="h4"` and defines nothing has
+shipped a hook, not a component.
 
-What ships is small enough to state in full:
+So the split is exact, and stating it loosely as "the project owns the look"
+would contradict D4:
+
+- **The package ships:** the tag/class mechanism, and `font-size` +
+  `line-height` for `.h1`–`.h4`.
+- **The project owns:** weight, family, colour, margin, letter-spacing,
+  balance, hyphenation — every column where the estate disagrees (finding 3,
+  D5) — plus the freedom to override the two the package does ship, which D4's
+  cascade table is built to guarantee.
 
 ```tsx
 <Heading level={3} visual={4}>Title</Heading>
@@ -90,7 +114,8 @@ What ships is small enough to state in full:
 The type system carries the constraint that a `className` string cannot: `level`
 and `visual` are `1 | 2 | 3 | 4 | 5 | 6`, so `visual={7}` and `level="h3"` are
 compile errors, and `level` is required — the outline decision is never
-implicit.
+implicit. That guarantee is compile-time only; see the API section on what
+reaches the DOM from an untyped caller.
 
 **Recorded honestly:** over `<h3 className="h4">` this saves keystrokes nowhere.
 Its value is that the two levels become two named, typed arguments instead of
@@ -102,7 +127,9 @@ whole case.
 
 Every other class in this package is namespaced (`sankara-button`,
 `sankara-richtext`, `sankara-popover`). This one is not, and the reason is
-finding 1: `.h1`–`.h6` is already defined in all five projects. Emitting
+finding 1: the `.hN` convention is already established in all five projects,
+though only fairmed defines all six levels — brillen-werk has `.h1`/`.h2`/`.h4`,
+nuwa `.h1`/`.h2`/`.h3`/`.h6`, numbers `.h1`–`.h3`. Emitting
 `sankara-h4` would mean every consumer adds six aliases before the component
 renders as anything, while the estate's real convention carries on beside it.
 
@@ -136,8 +163,9 @@ So the package styles what it emits and nothing else:
 }
 ```
 
-A hand-written `<h1>` with no class is untouched. Every `<Heading>` gets a
-default.
+A hand-written `<h1>` with no class is untouched. Every `<Heading>` whose
+`visual` is 1–4 gets a default; `visual={5}` and `visual={6}` emit their class
+and get nothing, by D6.
 
 **Cascade, derived from `tailwindcss@4.3.3` in this repo's `node_modules`.**
 Verified from source, not from memory: `index.css:1` declares
@@ -150,17 +178,34 @@ h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit }
 
 at specificity `(0,0,1)` (`preflight.css:78–86`).
 
+The table below covers **normal (non-`!important`) author declarations under
+Tailwind's default layer order**. It is not a general account of the cascade:
+`!important`, inline styles, active transitions and `@scope` proximity all
+outrank or reorder what follows, and a consumer who redeclares `@layer` order
+or emits utilities into a custom layer changes the premises. None of those
+appear anywhere in the estate, and the package ships no `!important`.
+
 | Competing rule | Specificity | Outcome | Why |
 | --- | --- | --- | --- |
-| Preflight's `h1…h6` reset | `(0,0,1)`, `@layer base` | **ours wins** | `(0,1,0)` beats `(0,0,1)` in the same layer, on specificity alone |
-| A consumer's `h1, .h1 { … }` twin | `(0,1,0)` on the class half | **theirs wins** | ties ours; their stylesheet imports after ours, later wins a tie |
+| Preflight's `h1…h6` reset | `(0,0,1)`, `@layer base` | **ours wins** | `(0,1,0)` beats `(0,0,1)` in the same layer, on specificity alone — no source-order dependency |
+| A consumer's `h1, .h1 { … }` twin in `@layer base` | `(0,1,0)` on the class half | **theirs wins**, conditionally | ties ours; resolved by source order, so it depends on their stylesheet importing after ours — the README's install order |
+| A consumer's **unlayered** `.h1` or `h1` rule | any | **theirs wins** | unlayered author rules beat every layered one regardless of specificity or order |
+| A consumer's rule in `@layer components` / `utilities` | any | **theirs wins** | later layer beats earlier |
 | Any Tailwind utility (`text-xs`) | `@layer utilities` | **utility wins** | later layer beats earlier, regardless of specificity |
-| A consumer's **bare-tag-only** `h1 { … }` | `(0,0,1)` | **ours wins** | and it should not — see Risks |
+| A consumer's **bare-tag-only** `h1 { … }` | `(0,0,1)`, `@layer base` | **ours wins** | and it should not — see Risks |
 
-This is a strictly better position than `RichText`'s D3, which needed source
-order for its defaults to apply at all. Here the default beats preflight on
-specificity, so no import-order accident can leave a `<Heading>` unstyled. Only
-the fourth row is a hazard, and it is bounded: all five projects write the twin.
+Rows three and four are worth stating because they are the common shapes: a
+project that has not adopted Tailwind's layers at all, or styles headings in
+`components`, overrides the package unconditionally. Only row two carries the
+install-order dependency, and only row six is a defect.
+
+Against preflight specifically this is a strictly better position than
+`RichText`'s D3, which needed source order for its defaults to apply at all:
+here specificity decides, so no ordering of *this stylesheet against Tailwind's*
+can leave a `<Heading>` unstyled. That is the whole of what the first row
+proves — it says nothing about a consumer omitting the package stylesheet,
+overriding `--heading-N` with an invalid value, or customising layer order,
+each of which can still leave `font-size: var(--heading-1)` without effect.
 
 **Line-height is not optional.** Preflight resets no heading line-height, so a
 56px `h1` inherits `html`'s `1.5` and renders on 84px leading. The size cannot
@@ -212,8 +257,16 @@ Only fairmed sizes `h5`/`h6` (`18px`/`16px`), and at `16px` with no weight a
 does nothing, plus two tokens to maintain. `RichText` made the same cut for the
 same reason, sizing `h1`–`h4` and leaving `h5`/`h6` to weight alone.
 
-So `.h5` and `.h6` are bare hooks — the mechanism without a default, which is
-what D1 ships everywhere else anyway.
+So `.h5` and `.h6` are bare hooks — the mechanism without a default.
+
+**This makes `visual` non-uniform, and the API must say so.** `visual={4}` gets
+a package size; `visual={5}` gets a class and nothing else, and renders as body
+copy until the consumer defines `.h5`. The type accepts all six, because the
+mechanism genuinely spans all six and the estate uses `.h5`/`.h6` (2 sites);
+the doc comment on `visual` and the README table both name 1–4 as the range the
+package supplies defaults for. Narrowing the type to `1 | 2 | 3 | 4` would break
+the two real `h3`+`.h5`/`.h6` call sites for a distinction better made in
+documentation.
 
 ## API
 
@@ -224,7 +277,8 @@ export type HeadingProps = Omit<ComponentPropsWithRef<'h1'>, 'children'> & {
   children: ReactNode
   /** Semantic level — the document outline. Renders <h1>…<h6>. */
   level: HeadingLevel
-  /** Visual level — the class. Defaults to `level`. */
+  /** Visual level — emits `h1`…`h6`. Defaults to `level`. The package ships
+      size defaults for 1–4 only; 5 and 6 are hooks for your own CSS (D6). */
   visual?: HeadingLevel
 }
 ```
@@ -249,6 +303,27 @@ export function Heading({ level, visual = level, className, children, ...props }
 - `ComponentPropsWithRef<'h1'>` is not an `h1`-specific choice: all six heading
   tags share `HTMLHeadingElement`.
 - A server component. No hooks, no handlers, no `'use client'`.
+
+**Two limits of the typed guarantee, documented rather than engineered around.**
+
+*Untyped callers.* This is a published package, so `level={7}` from JavaScript
+renders `<h7>` — React passes unknown tags through, producing invalid HTML
+rather than throwing. No runtime guard ships: the only CMS-driven level in the
+estate is `level?: "h2" | "h3" | "h4" | "h5"`
+(`fairmed.ch-sb/types/component-types-sb.d.ts:1305`), a Storyblok option field
+with fixed values, so the trust boundary is already closed upstream. A silent
+clamp would hide the caller's bug and a throw would blank a page over a
+heading; neither is better than the type error the TypeScript caller already
+gets. That same field yields **strings** (`"h3"`), not numbers, so a consumer
+wiring it to `level` must map it — the README shows the one-liner.
+
+*A heading class via `className`.* `<Heading level={2} visual={4}
+className="h1">` emits `class="h4 h1"`. `cn` is a plain join
+(`src/utilities/cn.ts`), and class-attribute order never decides the cascade —
+whichever rule is later in the stylesheet wins, so within the package's own
+block `.h4` beats `.h1`, while a consumer's own later `.h1` would not. `visual`
+is authoritative only when no competing heading class is passed. This is a
+consumer writing two visual levels at once; it is documented, not prevented.
 - Exported from `src/index.ts`. No optional peer, so nothing about `Icon`'s
   separate export path applies.
 
@@ -284,8 +359,32 @@ median of four. And two rows are rounded to land on a round `rem`: `h3` from
 end — in both cases the median falls between two adjacent Tailwind steps because
 an even number of projects contribute, and the lower step is taken.
 
-The clamps interpolate linearly between 375px and 1280px viewports, so each hits
-its median endpoints exactly at those two widths. The estate's own mechanism is
+The clamps interpolate linearly between 375px and 1280px viewports, targeting
+those endpoints — but they do not hit them exactly, and the spec should not
+claim otherwise. Computed at a 16px root:
+
+| Token | at 375px | at 1280px | ceiling actually engages |
+| --- | --- | --- | --- |
+| `--heading-1` | 36px (floor) | 55.97px | 1281px |
+| `--heading-2` | 30px (floor) | 35.97px | 1285px |
+| `--heading-3` | 20px (floor) | 29.92px | 1287px |
+| `--heading-4` | 18px (floor) | 19.94px | 1309px |
+
+The mobile ends are exact only because each preferred value falls a hair below
+the floor and clamps to it. The desktop ends are 0.03–0.08px short, and the
+ceilings engage 1–29px later than 1280px — `--heading-4`'s slope is shallow
+enough (`0.22vw`) that rounding the coefficient to two decimals moves its
+crossover noticeably. All of it is sub-pixel at the endpoints and invisible in
+practice; the coefficients stay two-decimal for legibility rather than being
+padded to chase an exactness that medians-of-medians do not warrant.
+
+**The endpoints assume a 16px root.** The floors and ceilings are `rem` while
+the interpolation is `vw`, so a project that changes the root font size shifts
+every crossover — brillen-werk sets `html { font-size: 18px }` at `md`, which
+is precisely such a project. The px figures above describe the package's
+defaults in a default-root consumer, not a universal.
+
+The estate's own mechanism is
 a `md:` breakpoint step rather than a clamp; clamps are used here because
 `RichText` already established them as this package's idiom, and a step would
 need a breakpoint value the package would have to invent.
@@ -299,7 +398,9 @@ No new colour tokens. No weight, family, margin or spacing tokens — D5.
 ## Testing
 
 Unusually ordinary for this package: no cascade claim lives in the component, so
-the component tests are jsdom-adequate and complete.
+its *rendered output* is fully checkable in jsdom. The feature as a whole is
+not — every claim in D4 needs the browser pass below, and jsdom can validate
+none of it.
 
 Component tests:
 
@@ -333,8 +434,14 @@ Stylesheet contract test, in the shape of `src/styles/richtext-css.test.ts`:
 - No `.h5`/`.h6` rule exists (D6).
 - No `font-weight`, `font-family`, `color` or `margin` declaration appears in
   the block (D5) — the invariant that keeps the disputed columns out.
-- The four tokens are declared in `@theme` with defaults; `tokens.test.ts`
-  covers their presence in `TOKENS`.
+- The four tokens are declared **inside the `@theme` block**, asserted
+  structurally. `tokens.test.ts` does not currently prove this for any token:
+  it checks that each `TOKENS` entry appears somewhere in the file followed by
+  a colon, and separately that *some* `@theme {` exists, so a token moved
+  outside `@theme` passes both. A token outside `@theme` is not a Tailwind
+  theme variable and cannot be overridden by a consumer's own `@theme` — the
+  override path D4's whole design rests on. The `layerOf` scanner already
+  tracks which block a declaration sits in, so the check is available cheaply.
 
 ## Browser verification
 
@@ -387,10 +494,16 @@ Single-engine results are to be recorded as single-engine.
   part of the install contract rather than an implementation detail.
 - **A bare-tag-only consumer rule loses to the package (D4, row 4).** A project
   with `h1 { font-size: 3rem }` and no `.h1` twin sees `<Heading level={1}>`
-  render at *our* size, silently overriding their own heading CSS. All five
-  surveyed projects write the twin, so the exposure is a future consumer who
-  does not. The fix is one line — add `.h1` to the existing selector — and the
-  README documents it. This is the mirror image of `RichText`'s risk: that
+  render at *our* size, silently overriding their own heading CSS. No surveyed
+  project is exposed, but not for one uniform reason: four write the `hN, .hN`
+  twin, and numbers.ch writes the class half alone (finding 4) — the opposite
+  omission, and the safe one, since its `.h1` ties ours and wins on source
+  order. The exposure is a future consumer who styles the tag only. The fix is
+  one line — add `.h1` to the existing selector — and the README documents it.
+  Note this row is also the only one in D4's table that a consumer *cannot*
+  escape by moving their rule out of `@layer base`: unlayered or later-layer
+  rules win outright, so the hazard is specific to a bare-tag rule that shares
+  our layer. This is the mirror image of `RichText`'s risk: that
   component's defaults were too weak to beat preflight, this one's are strong
   enough to beat a consumer.
 - **The medians are medians, not a designed scale.** They are a defensible
@@ -428,3 +541,9 @@ Single-engine results are to be recorded as single-engine.
   CLAUDE.md; finding 5's site passes `blok.level` into `level` itself.
 - A heading-level context that auto-increments nested headings. No project does
   this, and it makes the outline implicit — the opposite of D1.
+- Runtime validation of `level`/`visual`. The estate's only CMS-driven level is
+  a fixed option list, so the trust boundary is closed upstream; see the API
+  section for why neither a clamp nor a throw improves on the type error.
+- `tailwind-merge`-style class conflict resolution. `cn` is a plain join and
+  stays one, so `className="h1"` alongside `visual={4}` is resolved by the
+  stylesheet, not the class string — documented in the API section.
