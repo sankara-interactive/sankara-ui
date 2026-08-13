@@ -71,7 +71,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
       aria-roledescription="carousel"
       aria-label={label}
       onKeyDown={onKeyDown}
-      className={cn('sankara-carousel flex flex-col gap-6', className)}
+      className={cn('sankara-carousel', className)}
       style={
         // The props land in PRIVATE variables: an inline declaration of the
         // public name would beat any consumer stylesheet rule, and
@@ -87,7 +87,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
         ref={trackRef}
         onScroll={onScroll}
         tabIndex={0}
-        className="sankara-carousel-track relative flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="sankara-carousel-track"
       >
         {slides.map((slide, i) => (
           <div
@@ -95,14 +95,14 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} von ${slides.length}`}
-            className="sankara-carousel-slide shrink-0 snap-start"
+            className="sankara-carousel-slide"
           >
             {slide}
           </div>
         ))}
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className="sankara-carousel-dots">
         {slides.map((_, i) => (
           <button
             key={i}
@@ -110,10 +110,7 @@ export function Carousel({ children, label, perView = 1, gap = 16, className }: 
             onClick={() => goTo(i)}
             aria-label={`Slide ${i + 1}`}
             aria-current={i === index}
-            className={cn(
-              'sankara-carousel-dot h-2.5 rounded-card transition-all',
-              i === index ? 'w-8' : 'w-2.5'
-            )}
+            className="sankara-carousel-dot"
           />
         ))}
       </div>

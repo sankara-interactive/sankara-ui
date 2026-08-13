@@ -272,18 +272,19 @@ describe('Dialog', () => {
     )
     const dialog = container.querySelector('dialog')!
     expect(dialog).toHaveClass('sankara-dialog-end')
-    expect(dialog).toHaveClass('w-[min(20rem,85vw)]')
+    expect(dialog).toHaveClass('sankara-dialog-sm')
   })
 
   // Tailwind's preflight zeroes every margin, which would pin a centered modal
-  // to the top-left corner instead of letting the UA centre it.
-  it('keeps the auto margin that centres a modal dialog', () => {
+  // to the top-left corner instead of letting the UA centre it. The margin
+  // itself is asserted in dialog-css.test.ts.
+  it('keeps the class that centres a modal dialog', () => {
     const { container } = render(
       <Dialog open onRequestClose={noop}>
         Inhalt
       </Dialog>
     )
-    expect(container.querySelector('dialog')).toHaveClass('m-auto')
+    expect(container.querySelector('dialog')).toHaveClass('sankara-dialog')
   })
 
   it('forwards a ref and spreads unlisted props onto the root', () => {

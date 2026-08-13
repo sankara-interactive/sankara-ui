@@ -33,7 +33,7 @@ export function FaIcon({ name, size, label, className }: FaIconProps) {
       role={label ? 'img' : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
-      className={cn(classes, 'inline-flex shrink-0 items-center justify-center leading-none', className)}
+      className={cn(classes, 'sankara-fa-icon', className)}
       style={size ? { fontSize: size, width: size, height: size } : undefined}
     />
   )

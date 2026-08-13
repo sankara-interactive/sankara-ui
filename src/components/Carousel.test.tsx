@@ -109,7 +109,8 @@ describe('Carousel', () => {
     const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
     const track = container.querySelector('[tabindex="0"]')
     expect(track).toBeInTheDocument()
-    expect(track?.className).toMatch(/overflow-x-auto/)
+    // The overflow itself is asserted in carousel-css.test.ts; here the wiring.
+    expect(track?.className).toMatch(/sankara-carousel-track/)
   })
 
   it('moves slides with the arrow keys when the track itself has focus', async () => {

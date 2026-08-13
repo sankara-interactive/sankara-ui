@@ -365,6 +365,74 @@ Recommended: the second. Verify the failure against a real compiled build first 
 the mechanism is certain, but which side Tailwind's canonical sort favours for
 any given property pair is not.
 
+### Closed, 2026-08-13 — measured, then moved
+
+Compiled against Tailwind 4.3.3 (`@tailwindcss/postcss`, unoptimised) with the
+package's classes and a consumer's overrides in one build. Emission order within
+`@layer utilities`, later wins:
+
+| Package | Consumer | Winner |
+| --- | --- | --- |
+| `gap-6` | `gap-2` | **package** — override fails |
+| `gap-6` | `gap-4` | **package** — override fails |
+| `gap-6` | `gap-8` | consumer |
+| `inline-flex` | `flex` | **package** — override fails |
+| `shrink-0` | `shrink` | **package** — override fails |
+| `flex-col` | `flex-row` | consumer |
+
+Each utility family sorts by ascending value, so the escape hatch works only
+where the consumer's value happens to sort later — about half the cases, with no
+way for a consumer to tell which. Confirms the mechanism and the fix.
+
+Taken: the second option. `Carousel`, `Disclosure` and `FaIcon` now carry only
+`sankara-*` classes; the defaults moved into `tokens.css` under
+`@layer components`. Re-compiled to confirm the outcome — every moved rule lands
+in `@layer components`, every consumer utility in `@layer utilities`, and the
+emitted `@layer theme, base, components, utilities;` statement decides the
+cascade (the utilities block is emitted *physically first*, which is exactly why
+the layer statement, not source order, is what makes this safe).
+
+`src/components/inline-utilities.test.ts` is the regression guard: it fails on
+any non-`sankara-*` class literal in a component's `className`.
+
+`src/styles/layer-order.test.ts` proves the outcome rather than the text: it
+compiles Tailwind and `tokens.css` together the way a consumer does and asserts
+which layer each selector landed in. It is the only test here that would catch a
+broken `@import`, an invalid declaration, or a layer regression.
+
+**`Dialog`, measured after the fact, and folded in.** The assumption that its
+prop-keyed `SIZES` map was the hard part was wrong — that map is the part that
+already worked:
+
+| Package | Consumer | Winner |
+| --- | --- | --- |
+| `max-w-sm` | `max-w-xs` | consumer |
+| `max-w-sm` | `max-w-xl` | consumer |
+| `max-w-3xl` | `max-w-xl` | consumer |
+| `m-auto` | `m-0`, `m-4` | **package** — override fails |
+| `ms-auto` | `ms-0` | **package** — override fails |
+| `h-dvh` | `h-auto` | **package** — override fails |
+| `max-h-dvh` | `max-h-96` | **package** — override fails |
+| `overflow-y-auto` | `overflow-visible` | **package** — override fails |
+| `w-[min(20rem,85vw)]` | `w-80` | **package** — override fails |
+
+The broken half is the fixed geometry, not the prop-keyed part. Sizes became
+`.sankara-dialog-sm/-md/-lg` — a `max-inline-size` when centred, an
+`inline-size` when docked, via `.sankara-dialog-end.sankara-dialog-{size}`. The
+centred `max-w-*` map moved too, though it was not broken: leaving it inline
+would keep `Dialog` on the guard's exclusion list, and a hole in that guard is
+how this returns. Verified in Chrome across all six placement/size pairs, and
+the five failing overrides above now win.
+
+One deliberate exclusion remains:
+
+- **`Icon`** keeps `inline-block shrink-0` inline. It ships from the `./icon`
+  subpath, where a consumer may never have imported `styles.css`; moving them
+  would break its layout outright rather than merely make an override unreliable.
+
+Known limit of the guard: a class list built in a module-level constant and
+passed by identifier is not inspected. `Dialog`'s `SIZES` is that shape.
+
 ## Risks and open questions
 
 - **D8 against the evidence.** All three projects' input surfaces differ from
