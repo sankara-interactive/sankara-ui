@@ -52,6 +52,14 @@ describe('popover stylesheet', () => {
     expect(anchoredPanel).toContain('inset: auto;')
   })
 
+  it('keeps the anchored panel inside the viewport on narrow screens', () => {
+    const supports = css.match(/@supports \([^)]*position-anchor[^{]*\{[\s\S]*?\n\}/)?.[0]
+    const anchoredPanel = supports?.match(/\.sankara-popover \{[^}]*}/s)?.[0]
+    expect(anchoredPanel).toContain('width: max-content')
+    // dvw, not vw: vw includes the classic scrollbar width.
+    expect(anchoredPanel).toMatch(/max-inline-size: calc\(100dvw - [\d.]+rem\)/)
+  })
+
   it('transitions display and overlay discretely, from the base rule', () => {
     const base = css.match(/\.sankara-popover \{[^}]*}/s)?.[0]
     expect(base).toContain('display var(--duration-expand) allow-discrete')

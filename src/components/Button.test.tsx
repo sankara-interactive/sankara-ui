@@ -38,6 +38,19 @@ describe('Button default branch', () => {
     render(<Button ref={ref}>Speichern</Button>)
     expect(ref.current?.tagName).toBe('BUTTON')
   })
+
+  it('accepts the popover attributes as declared props, not just via the rest spread', () => {
+    // Typecheck is the assertion here: both were absent from ButtonProps, so
+    // passing either directly was an error even though it reached the DOM.
+    render(
+      <Button popoverTarget="panel-1" popoverTargetAction="toggle">
+        Fussnote
+      </Button>
+    )
+    const button = screen.getByRole('button')
+    expect(button).toHaveAttribute('popovertarget', 'panel-1')
+    expect(button).toHaveAttribute('popovertargetaction', 'toggle')
+  })
 })
 
 describe('Button render branch', () => {

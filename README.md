@@ -392,6 +392,18 @@ container and the content silently removes all spacing and moves the measure
 onto the wrapper. If your `RichTextRenderer` returns a root element rather than
 a fragment, put the class on that element instead of nesting it.
 
+Storyblok's own renderer is exactly that case, and it is silent about it —
+`StoryblokServerRichText` wraps its output in a `<div>` unless you turn it off:
+
+```tsx
+<RichText>
+  <StoryblokServerRichText doc={blok.text} wrapper={false} />
+</RichText>
+```
+
+Without `wrapper={false}` the content renders, reads correctly, and has no
+spacing at all.
+
 ### Overriding it
 
 Everything ships in `@layer base`, with `:where()` on the container class only:

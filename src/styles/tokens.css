@@ -224,6 +224,11 @@
       inset: auto;
       max-block-size: none;
       width: max-content;
+      /* max-content alone runs the panel past the viewport edge on narrow
+         screens — position-try-fallbacks flips it, which does not help when the
+         panel is simply wider than the screen. dvw, not vw: vw includes the
+         classic scrollbar and would still overflow by its width. */
+      max-inline-size: calc(100dvw - 2rem);
       /* Not part of the @supports condition: where try-fallbacks are missing the
          panel simply does not flip near a viewport edge. */
       position-try-fallbacks: flip-block, flip-inline;
