@@ -482,7 +482,10 @@ ids collide.
 
 **They work with any form library, or none.** Every prop the component does not
 consume is forwarded to the native element, and **rest props override** the
-derived `id`, `aria-describedby` and `aria-invalid`:
+derived `aria-describedby` and `aria-invalid`. `id` is a named prop, not a rest
+prop, so a form library's own `id` is adopted rather than overridden — and
+because `Field` derives `<label for>` from that same resolved id, the label
+follows it instead of being orphaned:
 
 ```tsx
 <Input label="E-Mail" {...register('email')} />                    // react-hook-form
@@ -503,7 +506,10 @@ merge:
 
 `RadioGroup` is the one exception: its accessible name comes from `<legend>`
 inside `<fieldset>`, so the fieldset *is* the wrapper — `className` merges onto
-it, and there is no `fieldClassName` to target a second element.
+it, and there is no `fieldClassName` to target a second element. Rest props also
+target the fieldset, not the radios, so `RadioGroup` is not compatible with
+`register()` / `getCollectionProps()` — wire a radio group to a form library
+with `Field` or raw radios instead.
 
 **These carry a surface, unlike the other components.** `Button`, `Dialog` and
 `Popover` ship structure only and leave background, border and radius to you. The
@@ -513,7 +519,7 @@ default uses `--color-surface`, `--color-muted` and `--radius-card`, and lives i
 `@layer components` — so one utility per property overrides any of it:
 
 ```tsx
-<Input name="email" label="E-Mail" className="border-0 bg-transparent rounded-none" />
+<Input name="email" label="E-Mail" className="border-0 bg-transparent rounded-none p-0" />
 ```
 
 **Errors are never signalled by colour alone.** `error` renders a message element
@@ -528,6 +534,12 @@ For a control this package lacks, `Field` is exported and hands you the wiring:
   )}
 </Field>
 ```
+
+`fieldWiring` is the function `Field` itself calls to derive that `id`,
+`describedBy` and `invalid`, exported alongside its `FieldWiring` and
+`SharedFieldProps` types for a component that cannot use `Field`'s wrapper
+markup — `RadioGroup` is exactly that case, which is why it calls `fieldWiring`
+directly instead of `Field`.
 
 ## Heading
 

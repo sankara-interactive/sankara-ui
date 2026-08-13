@@ -30,9 +30,15 @@ describe('field stylesheet', () => {
   })
 
   it('rings on focus-visible only, from the shared focus token', () => {
-    const ring = css.match(/\.sankara-field-control:focus-visible \{[^}]*}/s)?.[0]
+    const ring = css.match(/\.sankara-field-control:focus-visible[^{]*\{[^}]*}/s)?.[0]
     expect(ring).toContain('outline: 2px solid var(--color-focus)')
     expect(ring).toContain('outline-offset: 2px')
+  })
+
+  it('extends the focus ring to the checkbox and radio classes', () => {
+    const ring = css.match(/\.sankara-field-control:focus-visible[^{]*\{[^}]*}/s)?.[0]
+    expect(ring).toContain('.sankara-field-checkbox:focus-visible')
+    expect(ring).toContain('.sankara-field-radio:focus-visible')
   })
 
   it('tints native checkbox and radio with the brand accent', () => {
@@ -43,8 +49,9 @@ describe('field stylesheet', () => {
 
   it('colours the error text but never uses colour as the only cue', () => {
     expect(ruleFor('.sankara-field-error')).toContain('color: var(--color-error)')
-    // No border/background recolouring of the control on error -- the message element is the cue.
-    expect(css).not.toMatch(/\[aria-invalid\][^{]*\{[^}]*border-color/s)
+    // No [aria-invalid] selector exists at all -- the message element is the
+    // only cue, so nothing in the stylesheet recolours the control on error.
+    expect(css).not.toMatch(/\[aria-invalid\]/)
   })
 
   it('ships the field rules inside @layer components so consumer utilities win', () => {

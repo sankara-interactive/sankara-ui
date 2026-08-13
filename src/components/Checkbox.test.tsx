@@ -46,6 +46,14 @@ describe('Checkbox', () => {
     expect(screen.getByLabelText('AGB')).toHaveAttribute('id', 'conform-id')
   })
 
+  it('merges className onto the control and fieldClassName onto the wrapper', () => {
+    const { container } = render(
+      <Checkbox name="agb" label="AGB" className="w-4" fieldClassName="col-span-full" />
+    )
+    expect(screen.getByLabelText('AGB')).toHaveClass('sankara-field-checkbox', 'w-4')
+    expect(container.querySelector('.sankara-field')).toHaveClass('col-span-full')
+  })
+
   it('forwards the ref and native checked state', () => {
     const ref = { current: null as HTMLInputElement | null }
     render(<Checkbox name="agb" label="AGB" defaultChecked ref={ref} />)

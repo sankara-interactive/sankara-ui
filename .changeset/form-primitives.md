@@ -10,9 +10,12 @@ rather than `useId`, so a page with a form ships no JavaScript from this package
 Pass `id` explicitly when two forms on one page share a field name.
 
 They are form-library agnostic by construction: every unconsumed prop is
-forwarded to the native element, and rest props override the derived `id`,
-`aria-describedby` and `aria-invalid`. react-hook-form's `register()`, conform's
+forwarded to the native element, and rest props override the derived
+`aria-describedby` and `aria-invalid`, while a form library's own `id` is
+adopted and the label follows it. react-hook-form's `register()`, conform's
 `getInputProps()`, and plain native forms all work without an adapter.
+`RadioGroup` is the exception — its rest props target the `<fieldset>`, not the
+radios, so it does not compose with `register()`.
 
 Two new tokens: `--color-error` and `--field-accent`.
 

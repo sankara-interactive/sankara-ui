@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import type { ComponentPropsWithoutRef, ReactNode, Ref } from 'react'
 import { cn } from '../utilities/cn.js'
 import { fieldWiring, type SharedFieldProps } from './Field.js'
 
@@ -15,6 +15,7 @@ export type RadioGroupProps = Omit<
   Omit<SharedFieldProps, 'fieldClassName'> & {
     items: RadioGroupItem[]
     defaultValue?: string
+    ref?: Ref<HTMLFieldSetElement>
   }
 
 /** The one control that cannot use Field: a radio group's accessible name comes
@@ -30,6 +31,7 @@ export function RadioGroup({
   className,
   items,
   defaultValue,
+  ref,
   ...props
 }: RadioGroupProps) {
   const { id: groupId, describedBy, invalid, descriptionId, errorId } = fieldWiring({
@@ -40,7 +42,12 @@ export function RadioGroup({
   })
 
   return (
-    <fieldset className={cn('sankara-field', className)} aria-describedby={describedBy} {...props}>
+    <fieldset
+      className={cn('sankara-field', className)}
+      aria-describedby={describedBy}
+      ref={ref}
+      {...props}
+    >
       <legend className="sankara-field-label">{label}</legend>
       {items.map(item => {
         const itemId = `${groupId}-${item.value}`

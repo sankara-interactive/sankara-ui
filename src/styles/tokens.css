@@ -320,7 +320,9 @@
     padding: 0.5rem 0.75rem;
   }
 
-  .sankara-field-control:focus-visible {
+  .sankara-field-control:focus-visible,
+  .sankara-field-checkbox:focus-visible,
+  .sankara-field-radio:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
   }

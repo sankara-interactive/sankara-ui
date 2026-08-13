@@ -19,7 +19,9 @@ describe('Input', () => {
 
   it('lets rest props override the derived id and ARIA -- the conform case', () => {
     // conform's getInputProps() supplies its own id and aria-* pointing at its
-    // own error element. D4: rest props win, so those survive untouched.
+    // own error element. D4: rest props win on aria-*; id is a named prop, not
+    // a rest prop, so conform's id is adopted (and the label follows it) rather
+    // than overridden -- the two amount to the same outcome here.
     // (No separate `id="derived"` here: TS's own duplicate-prop check (TS2783)
     // correctly flags that as dead code -- the spread below already wins at
     // the JSX call site before Input ever runs.)
@@ -34,6 +36,14 @@ describe('Input', () => {
     const input = screen.getByLabelText('E-Mail')
     expect(input).toHaveAttribute('id', 'conform-id')
     expect(input).toHaveAttribute('aria-describedby', 'conform-error')
+  })
+
+  it('lets a spread aria-invalid override the one error would derive', () => {
+    // error="ours" alone would derive aria-invalid="true" -- a spread
+    // aria-invalid={false} must still win, proving the spread actually
+    // overrides rather than merely coinciding with the derived value.
+    render(<Input name="email" label="E-Mail" error="ours" {...{ 'aria-invalid': false }} />)
+    expect(screen.getByLabelText('E-Mail')).toHaveAttribute('aria-invalid', 'false')
   })
 
   it('forwards a spread name, as react-hook-form register() supplies', () => {
