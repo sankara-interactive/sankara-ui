@@ -365,6 +365,45 @@ Recommended: the second. Verify the failure against a real compiled build first 
 the mechanism is certain, but which side Tailwind's canonical sort favours for
 any given property pair is not.
 
+### Closed, 2026-08-13 — measured, then moved
+
+Compiled against Tailwind 4.3.3 (`@tailwindcss/postcss`, unoptimised) with the
+package's classes and a consumer's overrides in one build. Emission order within
+`@layer utilities`, later wins:
+
+| Package | Consumer | Winner |
+| --- | --- | --- |
+| `gap-6` | `gap-2` | **package** — override fails |
+| `gap-6` | `gap-4` | **package** — override fails |
+| `gap-6` | `gap-8` | consumer |
+| `inline-flex` | `flex` | **package** — override fails |
+| `shrink-0` | `shrink` | **package** — override fails |
+| `flex-col` | `flex-row` | consumer |
+
+Each utility family sorts by ascending value, so the escape hatch works only
+where the consumer's value happens to sort later — about half the cases, with no
+way for a consumer to tell which. Confirms the mechanism and the fix.
+
+Taken: the second option. `Carousel`, `Disclosure` and `FaIcon` now carry only
+`sankara-*` classes; the defaults moved into `tokens.css` under
+`@layer components`. Re-compiled to confirm the outcome — every moved rule lands
+in `@layer components`, every consumer utility in `@layer utilities`, and the
+emitted `@layer theme, base, components, utilities;` statement decides the
+cascade (the utilities block is emitted *physically first*, which is exactly why
+the layer statement, not source order, is what makes this safe).
+
+`src/components/inline-utilities.test.ts` is the regression guard: it fails on
+any non-`sankara-*` class literal in a component's `className`.
+
+Two deliberate exclusions, both recorded in that test:
+
+- **`Dialog`** has the same defect — `m-auto`, the `end`-placement drawer
+  utilities, and the `SIZES` map. Its classes are prop-keyed, so closing it means
+  a semantic class per size/placement pair. Own design pass, not folded in here.
+- **`Icon`** keeps `inline-block shrink-0` inline. It ships from the `./icon`
+  subpath, where a consumer may never have imported `styles.css`; moving them
+  would break its layout outright rather than merely make an override unreliable.
+
 ## Risks and open questions
 
 - **D8 against the evidence.** All three projects' input surfaces differ from

@@ -36,6 +36,23 @@ describe('carousel stylesheet', () => {
     )
   })
 
+  // These were Tailwind utilities in the JSX until D9: in @layer utilities they
+  // sat in the consumer's own layer, where a consumer's gap-2 lost to the
+  // package's gap-6 by canonical sort order alone.
+  it('owns the layout the component no longer spells inline', () => {
+    expect(ruleFor('.sankara-carousel')).toContain('flex-direction: column')
+    const track = ruleFor('.sankara-carousel-track')
+    expect(track).toContain('overflow-x: auto')
+    expect(track).toContain('scroll-snap-type: x mandatory')
+    expect(ruleFor('.sankara-carousel-slide')).toContain('scroll-snap-align: start')
+    expect(ruleFor('.sankara-carousel-dots')).toContain('justify-content: center')
+  })
+
+  it('drives the active dot width from aria-current rather than a JSX ternary', () => {
+    expect(ruleFor('.sankara-carousel-dot')).toContain('inline-size: 0.625rem')
+    expect(ruleFor(".sankara-carousel-dot[aria-current='true']")).toContain('inline-size: 2rem')
+  })
+
   it('colours dots from the two carousel tokens', () => {
     expect(ruleFor('.sankara-carousel-dot')).toContain('var(--carousel-dot)')
     expect(ruleFor(".sankara-carousel-dot[aria-current='true']")).toContain(

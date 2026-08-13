@@ -20,10 +20,7 @@ export type DisclosureProps = Omit<ComponentPropsWithRef<'details'>, 'children' 
 // the parent <details> is open.
 function DefaultIndicator() {
   return (
-    <span
-      aria-hidden
-      className="size-2.5 shrink-0 rotate-45 border-r-2 border-b-2 border-current opacity-60 transition-transform [transition-duration:var(--duration-expand)] group-open:rotate-[225deg]"
-    />
+    <span aria-hidden className="sankara-disclosure-indicator" />
   )
 }
 
@@ -45,12 +42,7 @@ export function Disclosure({
       {...props}
     >
       <summary
-        className={cn(
-          'flex cursor-pointer list-none items-center justify-between gap-4',
-          // Safari draws its own marker and ignores list-style: none.
-          '[&::-webkit-details-marker]:hidden',
-          summaryClassName
-        )}
+        className={cn('sankara-disclosure-summary', summaryClassName)}
       >
         {summary}
         {indicator ?? <DefaultIndicator />}
