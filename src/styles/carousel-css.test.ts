@@ -36,9 +36,6 @@ describe('carousel stylesheet', () => {
     )
   })
 
-  // These were Tailwind utilities in the JSX until D9: in @layer utilities they
-  // sat in the consumer's own layer, where a consumer's gap-2 lost to the
-  // package's gap-6 by canonical sort order alone.
   it('owns the layout the component no longer spells inline', () => {
     expect(ruleFor('.sankara-carousel')).toContain('flex-direction: column')
     const track = ruleFor('.sankara-carousel-track')

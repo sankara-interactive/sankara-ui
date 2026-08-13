@@ -21,8 +21,6 @@ describe('disclosure stylesheet', () => {
     expect(outside).toBe('')
   })
 
-  // Both were Tailwind utilities in the JSX until D9, where a consumer's own
-  // gap or size utility was decided by canonical sort order rather than intent.
   it('lays out the summary and hides the native markers', () => {
     const summary = ruleFor('.sankara-disclosure-summary')
     expect(summary).toContain('justify-content: space-between')

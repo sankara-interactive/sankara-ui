@@ -18,9 +18,7 @@ export type DialogProps = Omit<
   closeOnOutsideClick?: boolean
 }
 
-// One class per size; what it means is the stylesheet's business. Centred, it
-// caps the width; docked to the edge, it sets one, because a drawer wants a
-// width rather than a ceiling.
+// One class per size; what it means is the stylesheet's business.
 const SIZES = { sm: 'sankara-dialog-sm', md: 'sankara-dialog-md', lg: 'sankara-dialog-lg' } as const
 
 // Ref-counted so sibling dialogs do not unlock each other, and so React Strict

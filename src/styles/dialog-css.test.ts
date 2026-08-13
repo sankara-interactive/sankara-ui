@@ -22,7 +22,7 @@ describe('dialog stylesheet', () => {
   })
 
   // Preflight zeroes every margin, so without this a centred modal pins itself
-  // to the top-left. It was m-auto in the JSX, where a consumer's m-0 lost to it.
+  // to the top-left.
   it('restores the auto margin that centres a modal', () => {
     expect(ruleFor('.sankara-dialog')).toContain('margin: auto')
   })

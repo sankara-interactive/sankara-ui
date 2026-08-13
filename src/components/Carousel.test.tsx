@@ -109,8 +109,7 @@ describe('Carousel', () => {
     const { container } = render(<Carousel label="Referenzen">{slides}</Carousel>)
     const track = container.querySelector('[tabindex="0"]')
     expect(track).toBeInTheDocument()
-    // The overflow itself now lives on .sankara-carousel-track in tokens.css
-    // (D9), asserted in carousel-css.test.ts; here only the wiring.
+    // The overflow itself is asserted in carousel-css.test.ts; here the wiring.
     expect(track?.className).toMatch(/sankara-carousel-track/)
   })
 

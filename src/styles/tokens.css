@@ -63,9 +63,7 @@
      rules beat Tailwind's utilities outright, so a consumer's own opacity or
      translate class on the dialog would silently lose to these. */
   /* margin: auto restores the UA centering of a modal dialog, which Tailwind's
-     preflight zeroes. It was m-auto in the JSX until D9: measured against a
-     4.3.3 build, m-auto beat a consumer's m-0 and m-4 (only mt-8 won), so the
-     one thing a consumer is most likely to want back was the least reachable. */
+     preflight zeroes. */
   .sankara-dialog {
     margin: auto;
     opacity: 0;
@@ -108,11 +106,7 @@
     }
   }
 
-  /* Sizes: max-inline-size when centred, a fixed inline-size when docked, since
-     a drawer wants a width rather than a ceiling. Both were utilities before —
-     the max-w-* map actually survived the canonical sort, but the drawer's
-     w-[min(...)] did not, and leaving half of it inline would leave Dialog out
-     of the inline-utilities guard. */
+  /* A ceiling when centred, a width when docked: a drawer wants the width. */
   .sankara-dialog-sm {
     max-inline-size: 24rem;
   }
@@ -207,12 +201,9 @@
   }
 
   /* Two borders of a square, turned 45deg: a chevron with no icon dependency.
-     The `rotate` property rather than `transform`, so a consumer's own
-     transform utility on the indicator composes instead of colliding.
-     ease-in-out, not the cubic-bezier(0.4, 0, 0.2, 1) that Tailwind's
-     transition-transform used to supply here: the chevron and the panel it
-     points at now share one curve and one duration, which is what they should
-     have had all along. */
+     `rotate` rather than `transform`, so a consumer's own transform utility
+     composes instead of colliding, and ease-in-out to match the panel it
+     points at. */
   .sankara-disclosure-indicator {
     block-size: 0.625rem;
     inline-size: 0.625rem;
@@ -742,8 +733,7 @@
     gap: 0.5rem;
   }
 
-  /* Width is keyed off aria-current rather than a JSX ternary: the attribute is
-     already the source of truth for which dot is active. */
+  /* Width keys off aria-current: already the source of truth for which is active. */
   .sankara-carousel-dot {
     block-size: 0.625rem;
     inline-size: 0.625rem;
@@ -759,9 +749,8 @@
 }
 /* END carousel */
 
-/* Webfont icon box. FaIcon only; the SVG `Icon` keeps its utilities inline
-   because it ships from the ./icon subpath, where a consumer may not have
-   imported this stylesheet at all. */
+/* Webfont icon box. FaIcon only — the SVG `Icon` keeps its utilities inline,
+   since ./icon consumers may never import this stylesheet. */
 @layer components {
   .sankara-fa-icon {
     display: inline-flex;

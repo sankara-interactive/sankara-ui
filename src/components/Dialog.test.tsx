@@ -276,9 +276,8 @@ describe('Dialog', () => {
   })
 
   // Tailwind's preflight zeroes every margin, which would pin a centered modal
-  // to the top-left corner instead of letting the UA centre it. The auto margin
-  // now comes from .sankara-dialog in tokens.css (D9), asserted there; here only
-  // that the class carrying it is on the element.
+  // to the top-left corner instead of letting the UA centre it. The margin
+  // itself is asserted in dialog-css.test.ts.
   it('keeps the class that centres a modal dialog', () => {
     const { container } = render(
       <Dialog open onRequestClose={noop}>

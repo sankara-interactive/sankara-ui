@@ -16,8 +16,6 @@ describe('fa-icon stylesheet', () => {
     expect(outside).toBe('')
   })
 
-  // inline-flex and shrink-0 were the two utilities most certain to defeat a
-  // consumer override: both sort after the flex and shrink they would replace.
   it('centres the glyph without the component spelling it inline', () => {
     const rule = block.match(/\.sankara-fa-icon\s*\{[^}]*\}/s)?.[0] ?? ''
     expect(rule).toContain('display: inline-flex')

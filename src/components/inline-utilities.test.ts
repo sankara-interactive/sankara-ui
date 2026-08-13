@@ -6,22 +6,17 @@ import { describe, expect, it } from 'vitest'
 // D9: a package default emitted as a Tailwind utility in JSX compiles into
 // @layer utilities -- the consumer's own layer -- where `cn` (a plain join, not
 // tailwind-merge) leaves both classes in the attribute and Tailwind's canonical
-// sort picks the winner. Verified against a real 4.3.3 build: the package's
-// gap-6 beats a consumer's gap-2 but loses to gap-8, and inline-flex and
-// shrink-0 beat flex and shrink. Half the overrides silently fail, so every
-// default belongs in tokens.css under @layer components instead.
+// sort picks the winner. Measured against a 4.3.3 build, roughly half of all
+// overrides lost, so every default belongs in tokens.css instead.
 const dir = new URL('.', import.meta.url)
 
-// group  -- Disclosure's documented hook for a consumer's own group-open:
-//           indicator; a marker class, it declares nothing itself.
-// h1..h6 -- Heading's semantic classes, not utilities.
+// A marker class for a consumer's own group-open: indicator; declares nothing.
 const ALLOWED = new Set(['group'])
 const isAllowed = (token: string) =>
   token.startsWith('sankara-') || /^h[1-6]$/.test(token) || ALLOWED.has(token)
 
-// Icon ships from the ./icon subpath, where a consumer may never have imported
-// styles.css; its two utilities stay inline on purpose and are the only ones
-// left in the package.
+// Icon ships from ./icon, where a consumer may never have imported styles.css;
+// its two utilities stay inline on purpose.
 const EXCLUDED = new Set(['Icon.tsx'])
 const FILES = fs
   .readdirSync(dir)
@@ -50,17 +45,16 @@ function classNameExpressions(source: string): string[] {
   return found
 }
 
-// Quoted and template literals both count -- a template is just as capable of
-// carrying `sankara-x flex`. Interpolated segments are runtime values, so any
-// token touching one is dropped whole rather than judged on its static half:
-// Heading's `h${visual}` is a class name this test cannot know.
+// Templates count too -- backticks carry `sankara-x flex` just as well. A token
+// touching an interpolation is dropped whole (Heading's `h${visual}` is a class
+// this test cannot know), so the marker must not be whitespace: it has to stay
+// glued to its token rather than split off a bare `h`.
 //
-// The operand of a comparison is a prop value rather than a class -- Field's
+// The operand of a comparison is a prop value, not a class -- Field's
 // `layout === 'inline' && 'sankara-field-inline'` has one of each.
 //
-// Not caught: a class list built in a module-level constant and passed by
-// identifier -- Dialog's SIZES map is that shape. It holds sankara-* classes
-// today, and nothing here would notice if it stopped.
+// Not caught: a class list held in a module constant and passed by identifier.
+// Dialog's SIZES is that shape.
 const HOLE = '\u0000'
 
 const literalClasses = (expression: string) =>
