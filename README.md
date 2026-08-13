@@ -461,6 +461,70 @@ A table with more columns than fit still overflows. Wrapping it in a scroll
 container changes the accessibility tree and needs a label, so your renderer owns
 that decision.
 
+## Forms
+
+Six pieces: `Field`, `Input`, `Textarea`, `Checkbox`, `RadioGroup`, `Select`.
+All are server components — a page with a form ships no JavaScript from this
+package.
+
+```tsx
+import { Input, Textarea, Checkbox } from '@sankara-ui/core'
+
+<Input name="email" label="E-Mail" type="email" required />
+<Textarea name="message" label="Nachricht" />
+<Checkbox name="agb" label="AGB akzeptieren" />
+```
+
+**`name` is required and doubles as the id.** There is no `useId` — that is a
+client-only hook, and using it would make every form page ship JavaScript. Pass
+`id` explicitly when two forms on one page share a field name; otherwise their
+ids collide.
+
+**They work with any form library, or none.** Every prop the component does not
+consume is forwarded to the native element, and **rest props override** the
+derived `id`, `aria-describedby` and `aria-invalid`:
+
+```tsx
+<Input label="E-Mail" {...register('email')} />                    // react-hook-form
+<Input label="E-Mail" {...getInputProps(field, {type:'email'})} />  // conform
+```
+
+conform supplies its own id and ARIA pointing at its own error element; because
+rest props win, those survive and you simply do not pass `error`. Passing both
+conform's props *and* this package's `error` renders two error elements with
+only conform's announced.
+
+**`className` targets the control; `fieldClassName` targets the wrapper.** Both
+merge:
+
+```tsx
+<Input name="email" label="E-Mail" className="w-full" fieldClassName="col-span-full" />
+```
+
+**These carry a surface, unlike the other components.** `Button`, `Dialog` and
+`Popover` ship structure only and leave background, border and radius to you. The
+form controls do not: Tailwind preflight zeroes `border-width` on every element,
+so a control with no surface is invisible rather than merely unstyled. The
+default uses `--color-surface`, `--color-muted` and `--radius-card`, and lives in
+`@layer components` — so one utility per property overrides any of it:
+
+```tsx
+<Input name="email" label="E-Mail" className="border-0 bg-transparent rounded-none" />
+```
+
+**Errors are never signalled by colour alone.** `error` renders a message element
+and sets `aria-invalid`; nothing recolours the control's border as the only cue.
+
+For a control this package lacks, `Field` is exported and hands you the wiring:
+
+```tsx
+<Field name="colour" label="Farbe" error={e}>
+  {({ id, describedBy, invalid }) => (
+    <ThirdPartyPicker id={id} aria-describedby={describedBy} aria-invalid={invalid} />
+  )}
+</Field>
+```
+
 ## Heading
 
 A heading's level in the document outline and its size on screen are two
