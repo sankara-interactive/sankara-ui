@@ -18,16 +18,20 @@ needed for [`Icon`](#icons):
 yarn add @fortawesome/fontawesome-svg-core @fortawesome/react-fontawesome
 ```
 
-Then in your global stylesheet — **both lines are required**:
+Then in your global stylesheet:
 
 ```css
 @import "tailwindcss";
 @import "@sankara-ui/core/styles.css";
-@source "../node_modules/@sankara-ui/core";
+@source "../node_modules/@sankara-ui/core/dist/components";
 ```
 
-Tailwind v4 does not scan `node_modules` by default. Without the `@source`
-line the components render completely unstyled, with no error.
+The two imports are required. The `@source` line — Tailwind v4 does not scan
+`node_modules` — is needed only by [`Icon`](#icons), the one component that
+still styles itself with utility classes; everything else gets its defaults
+from `styles.css`. Point it at `dist/components`, not at the package root: the
+root scans this README too, and Tailwind then emits ~2 KB of utilities for
+class names that appear nowhere but the documentation.
 
 **Order matters.** Import the package stylesheet after `tailwindcss` and before
 your own base styles. `RichText`'s defaults are plain element rules that tie

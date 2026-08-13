@@ -48,9 +48,11 @@ one-file-per-source, so what's in `src` is what ships.
 - **Peer range spans FontAwesome 6 and 7.** Behaviour differs between them
   (see the `role` comment in `Icon.tsx`); don't "simplify away" accommodations
   for the version that isn't installed locally.
-- **Consumers must add `@source "../node_modules/@sankara-ui/core";`** — Tailwind
-  v4 doesn't scan `node_modules`, and without it components render unstyled with
-  no error. Keep the README install block accurate when class usage changes.
+- **Consumers add `@source ".../@sankara-ui/core/dist/components";`** — Tailwind
+  v4 doesn't scan `node_modules`. Since 0.9.0 only `Icon` needs it; pointed at
+  the package root instead, Tailwind scans `README.md` and emits utilities for
+  class names that exist only in prose. Keep the README install block accurate
+  when class usage changes.
 
 ## Roadmap and scope
 
