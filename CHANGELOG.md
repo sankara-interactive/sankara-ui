@@ -1,5 +1,47 @@
 # @sankara-ui/core
 
+## 0.8.0
+
+### Minor Changes
+
+- 3d07292: Add the form primitives: `Field`, `Input`, `Textarea`, `Checkbox`, `RadioGroup`
+  and `Select`.
+
+  All six are server components — the id derives from the required `name` prop
+  rather than `useId`, so a page with a form ships no JavaScript from this package.
+  Pass `id` explicitly when two forms on one page share a field name.
+
+  They are form-library agnostic by construction: every unconsumed prop is
+  forwarded to the native element, and rest props override the derived
+  `aria-describedby` and `aria-invalid`, while a form library's own `id` is
+  adopted and the label follows it. react-hook-form's `register()`, conform's
+  `getInputProps()`, and plain native forms all work without an adapter.
+  `RadioGroup` is the exception — its rest props target the `<fieldset>`, not the
+  radios, so it does not compose with `register()`.
+
+  Two new tokens: `--color-error` and `--field-accent`.
+
+  Unlike `Button`, `Dialog` and `Popover`, the form controls ship a visible surface
+  — Tailwind preflight zeroes `border-width`, so a control with no default is
+  invisible rather than merely unstyled. It is built from `--color-surface`,
+  `--color-muted` and `--radius-card` in `@layer components`, so any consumer
+  utility overrides it.
+
+- 1c8c5bc: Close the three findings from the template's end-to-end integration.
+
+  - `ButtonProps` declares `popoverTarget` and `popoverTargetAction`. Using a
+    `Button` as a `Popover` trigger already worked, but only because Popover's
+    `cloneElement` injection landed in Button's rest-prop spread — passing either
+    attribute directly was a type error, and any future prop filtering would have
+    silently stopped the popover opening. The pairing is now part of the API.
+  - The anchored `.sankara-popover` panel gets `max-inline-size: calc(100dvw - 2rem)`.
+    `width: max-content` ran the panel past the viewport edge on narrow screens;
+    `position-try-fallbacks` flips a panel but cannot shrink one wider than the
+    screen. `dvw` rather than `vw` so the classic scrollbar is not counted.
+  - README documents `StoryblokServerRichText wrapper={false}`. The renderer's
+    default wrapper `<div>` breaks `RichText`'s direct-children contract, so
+    content renders with no spacing at all and no error.
+
 ## 0.7.0
 
 ### Minor Changes
