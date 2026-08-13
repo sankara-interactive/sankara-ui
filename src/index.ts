@@ -14,3 +14,5 @@ export { Dialog, type DialogProps } from './components/Dialog.js'
 // unlike Icon it is safe in the barrel.
 export { FaIcon, type FaIconProps } from './components/FaIcon.js'
 export { slideIndexFromScroll } from './utilities/carousel.js'
+export { Field, fieldWiring } from './components/Field.js'
+export type { FieldProps, FieldWiring, SharedFieldProps } from './components/Field.js'
