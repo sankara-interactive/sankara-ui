@@ -21,6 +21,8 @@
   --heading-4: clamp(1.125rem, 1.07rem + 0.22vw, 1.25rem);
   --carousel-dot: var(--color-muted);
   --carousel-dot-active: var(--color-primary);
+  --color-error: oklch(0.55 0.19 25);
+  --field-accent: var(--color-primary);
 }
 
 /* --richtext-measure is registered, and it has to be. `ch` is font-relative, so
@@ -294,6 +296,77 @@
   .sankara-button:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
+  }
+}
+
+/* Form controls. Unlike .sankara-button and .sankara-popover, these DO carry a
+   surface -- see the form spec's D8. A borderless <button> is merely unstyled;
+   Tailwind preflight zeroes border-width on every element, so a borderless
+   <input> is invisible, and six controls repeated across every form on every
+   site is exactly the drift this package exists to prevent. The default is
+   spelled in the same globals a consumer would otherwise type by hand, and
+   @layer components means one utility per property overrides any of it. */
+@layer components {
+  .sankara-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .sankara-field-control {
+    background: var(--color-surface);
+    border: 1px solid var(--color-muted);
+    border-radius: var(--radius-card);
+    padding: 0.5rem 0.75rem;
+  }
+
+  .sankara-field-control:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* Native controls render browser-blue and ignore the brand without this. */
+  .sankara-field-checkbox,
+  .sankara-field-radio {
+    accent-color: var(--field-accent);
+  }
+
+  .sankara-field-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sankara-field-description {
+    color: var(--color-muted);
+  }
+
+  /* Colour is not the only cue (D10): the message element itself is the signal,
+     so nothing here recolours the control's border on aria-invalid. */
+  .sankara-field-error {
+    color: var(--color-error);
+  }
+
+  /* Inline is a class, not a second code path (D5): the DOM stays
+     label -> control -> messages in both layouts, and `order` alone moves the
+     label after the control. Nesting the input inside the <label> would fork
+     the markup for no accessibility gain -- a sibling <label for> is an
+     equivalent name and an equivalent click target. */
+  .sankara-field-inline {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .sankara-field-inline > .sankara-field-label {
+    order: 2;
+  }
+
+  .sankara-field-inline > .sankara-field-description,
+  .sankara-field-inline > .sankara-field-error {
+    order: 3;
+    flex-basis: 100%;
   }
 }
 

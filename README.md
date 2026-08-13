@@ -68,6 +68,8 @@ of them in your own `@theme` block, after the import:
 | `--heading-4` | `Heading` `.h4` size, fluid |
 | `--carousel-dot` | Inactive `Carousel` dot, defaults to `--color-muted` |
 | `--carousel-dot-active` | Active `Carousel` dot, defaults to `--color-primary` |
+| `--color-error` | Error message text |
+| `--field-accent` | Native checkbox and radio accent colour |
 
 ## Icons
 

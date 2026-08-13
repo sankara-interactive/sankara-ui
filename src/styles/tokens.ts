@@ -22,4 +22,6 @@ export const TOKENS = [
   '--heading-4',
   '--carousel-dot',
   '--carousel-dot-active',
+  '--color-error',
+  '--field-accent',
 ] as const
