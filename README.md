@@ -501,6 +501,10 @@ merge:
 <Input name="email" label="E-Mail" className="w-full" fieldClassName="col-span-full" />
 ```
 
+`RadioGroup` is the one exception: its accessible name comes from `<legend>`
+inside `<fieldset>`, so the fieldset *is* the wrapper — `className` merges onto
+it, and there is no `fieldClassName` to target a second element.
+
 **These carry a surface, unlike the other components.** `Button`, `Dialog` and
 `Popover` ship structure only and leave background, border and radius to you. The
 form controls do not: Tailwind preflight zeroes `border-width` on every element,
