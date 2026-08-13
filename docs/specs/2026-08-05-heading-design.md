@@ -619,6 +619,14 @@ present. `(0,1,0)` beats `(0,0,1)` regardless of source order.
 
 This is now measured, not reasoned about. The Risks entry stands as written.
 
+**Reproduced 2026-08-13 outside a fixture**, in `next-storyblok-template`'s
+served Next 16 / Turbopack production build on 0.9.0: the same
+`@layer base { h2 { font-size: 48px } }` injected after the package import left
+`h2.h2` at **30.82px** while a classless `<h2>` appended to the same tree
+computed **48px**. The fixture's 36-vs-48 was not an artefact of how it was
+compiled — a real bundler, a real consumer stylesheet and a real `Heading`
+render reproduce it. Details in `2026-08-13-template-0.9-observations.md`.
+
 ### The clamp across viewports
 
 `resize_window` was not used. `iframe-host.html` embeds `fixture-bare.html` in
