@@ -395,14 +395,43 @@ the layer statement, not source order, is what makes this safe).
 `src/components/inline-utilities.test.ts` is the regression guard: it fails on
 any non-`sankara-*` class literal in a component's `className`.
 
-Two deliberate exclusions, both recorded in that test:
+`src/styles/layer-order.test.ts` proves the outcome rather than the text: it
+compiles Tailwind and `tokens.css` together the way a consumer does and asserts
+which layer each selector landed in. It is the only test here that would catch a
+broken `@import`, an invalid declaration, or a layer regression.
 
-- **`Dialog`** has the same defect — `m-auto`, the `end`-placement drawer
-  utilities, and the `SIZES` map. Its classes are prop-keyed, so closing it means
-  a semantic class per size/placement pair. Own design pass, not folded in here.
+**`Dialog`, measured after the fact, and folded in.** The assumption that its
+prop-keyed `SIZES` map was the hard part was wrong — that map is the part that
+already worked:
+
+| Package | Consumer | Winner |
+| --- | --- | --- |
+| `max-w-sm` | `max-w-xs` | consumer |
+| `max-w-sm` | `max-w-xl` | consumer |
+| `max-w-3xl` | `max-w-xl` | consumer |
+| `m-auto` | `m-0`, `m-4` | **package** — override fails |
+| `ms-auto` | `ms-0` | **package** — override fails |
+| `h-dvh` | `h-auto` | **package** — override fails |
+| `max-h-dvh` | `max-h-96` | **package** — override fails |
+| `overflow-y-auto` | `overflow-visible` | **package** — override fails |
+| `w-[min(20rem,85vw)]` | `w-80` | **package** — override fails |
+
+The broken half is the fixed geometry, not the prop-keyed part. Sizes became
+`.sankara-dialog-sm/-md/-lg` — a `max-inline-size` when centred, an
+`inline-size` when docked, via `.sankara-dialog-end.sankara-dialog-{size}`. The
+centred `max-w-*` map moved too, though it was not broken: leaving it inline
+would keep `Dialog` on the guard's exclusion list, and a hole in that guard is
+how this returns. Verified in Chrome across all six placement/size pairs, and
+the five failing overrides above now win.
+
+One deliberate exclusion remains:
+
 - **`Icon`** keeps `inline-block shrink-0` inline. It ships from the `./icon`
   subpath, where a consumer may never have imported `styles.css`; moving them
   would break its layout outright rather than merely make an override unreliable.
+
+Known limit of the guard: a class list built in a module-level constant and
+passed by identifier is not inspected. `Dialog`'s `SIZES` is that shape.
 
 ## Risks and open questions
 

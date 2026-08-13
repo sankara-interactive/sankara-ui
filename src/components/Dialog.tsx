@@ -18,10 +18,10 @@ export type DialogProps = Omit<
   closeOnOutsideClick?: boolean
 }
 
-const SIZES = {
-  center: { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-3xl' },
-  end: { sm: 'w-[min(20rem,85vw)]', md: 'w-[min(28rem,90vw)]', lg: 'w-[min(36rem,95vw)]' },
-} as const
+// One class per size; what it means is the stylesheet's business. Centred, it
+// caps the width; docked to the edge, it sets one, because a drawer wants a
+// width rather than a ceiling.
+const SIZES = { sm: 'sankara-dialog-sm', md: 'sankara-dialog-md', lg: 'sankara-dialog-lg' } as const
 
 // Ref-counted so sibling dialogs do not unlock each other, and so React Strict
 // Mode's double-invoked effects balance out.
@@ -135,12 +135,9 @@ export function Dialog({
         onPointerUp?.(event)
       }}
       className={cn(
-        // m-auto restores the UA centering of a modal dialog. Tailwind's
-        // preflight resets margin to 0 on every element, which otherwise pins
-        // the dialog to the top-left corner.
-        'sankara-dialog m-auto',
-        placement === 'end' && 'sankara-dialog-end my-0 me-0 ms-auto h-dvh max-h-dvh overflow-y-auto',
-        SIZES[placement][size],
+        'sankara-dialog',
+        placement === 'end' && 'sankara-dialog-end',
+        SIZES[size],
         className
       )}
       {...props}

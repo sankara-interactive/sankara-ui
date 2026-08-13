@@ -2,8 +2,8 @@
 '@sankara-ui/core': minor
 ---
 
-Make the `className` escape hatch reliable on `Carousel`, `Disclosure` and
-`FaIcon` (the form spec's D9 follow-up).
+Make the `className` escape hatch reliable on `Carousel`, `Disclosure`, `FaIcon`
+and `Dialog` (the form spec's D9 follow-up).
 
 All three spelled their defaults as Tailwind utilities in JSX, which compile
 into `@layer utilities` — the consumer's own layer. `cn` is a plain join, so
@@ -24,7 +24,13 @@ layout from the stylesheet, so `@import "@sankara-ui/core/styles.css"` is no
 longer optional for them. It was already required by the install instructions
 and by `Dialog`, `Disclosure` and `Popover`.
 
-`Dialog` still emits utilities inline — its size and placement classes come from
-a prop-keyed map and need their own design pass. `Icon` keeps its two utilities
-deliberately, since it ships from the `./icon` subpath where the stylesheet may
-never be imported.
+`Dialog` is included, with a smaller change than it looks: its `max-w-*` size map
+already survived the sort, but `m-auto`, `ms-auto`, `h-dvh`, `max-h-dvh`,
+`overflow-y-auto` and the `w-[min(…)]` drawer widths did not. Sizes are now
+`.sankara-dialog-sm` / `-md` / `-lg`, meaning a max-inline-size when centred and
+an inline-size when docked to the edge. A consumer who was overriding the drawer
+with `w-*`, `h-*`, `max-h-*`, `overflow-*` or `m-*` gets a different result than
+before — the one they asked for.
+
+`Icon` keeps its two utilities deliberately, since it ships from the `./icon`
+subpath where the stylesheet may never be imported.

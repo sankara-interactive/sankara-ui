@@ -12,22 +12,17 @@ import { describe, expect, it } from 'vitest'
 // default belongs in tokens.css under @layer components instead.
 const dir = new URL('.', import.meta.url)
 
-// group      -- Disclosure's documented hook for a consumer's own group-open:
-//               indicator; a marker class, it declares nothing itself.
-// m-auto     -- Dialog, restoring the UA centering preflight zeroes. Documented
-//               in place.
-// h1..h6     -- Heading's semantic classes, not utilities.
-const ALLOWED = new Set(['group', 'm-auto'])
+// group  -- Disclosure's documented hook for a consumer's own group-open:
+//           indicator; a marker class, it declares nothing itself.
+// h1..h6 -- Heading's semantic classes, not utilities.
+const ALLOWED = new Set(['group'])
 const isAllowed = (token: string) =>
   token.startsWith('sankara-') || /^h[1-6]$/.test(token) || ALLOWED.has(token)
 
-// Icon   -- ships from the ./icon subpath, where a consumer may never have
-//           imported styles.css; its two utilities stay inline on purpose.
-// Dialog -- the same defect, unfixed: its size and placement utilities come
-//           from a prop-keyed map (SIZES), so closing it means a semantic class
-//           per size/placement pair, which is a design decision the form spec's
-//           follow-up did not cover. Tracked, not waived.
-const EXCLUDED = new Set(['Icon.tsx', 'Dialog.tsx'])
+// Icon ships from the ./icon subpath, where a consumer may never have imported
+// styles.css; its two utilities stay inline on purpose and are the only ones
+// left in the package.
+const EXCLUDED = new Set(['Icon.tsx'])
 const FILES = fs
   .readdirSync(dir)
   .filter(f => f.endsWith('.tsx') && !/\.(test|stories)\.tsx$/.test(f) && !EXCLUDED.has(f))
@@ -55,15 +50,28 @@ function classNameExpressions(source: string): string[] {
   return found
 }
 
-// Only quoted literals: a template literal or an identifier is a runtime value
-// (FaIcon's fa-* name, a consumer's className) and not ours to police. The
-// operand of a comparison is a prop value rather than a class -- Field's
+// Quoted and template literals both count -- a template is just as capable of
+// carrying `sankara-x flex`. Interpolated segments are runtime values, so any
+// token touching one is dropped whole rather than judged on its static half:
+// Heading's `h${visual}` is a class name this test cannot know.
+//
+// The operand of a comparison is a prop value rather than a class -- Field's
 // `layout === 'inline' && 'sankara-field-inline'` has one of each.
+//
+// Not caught: a class list built in a module-level constant and passed by
+// identifier -- Dialog's SIZES map is that shape. It holds sankara-* classes
+// today, and nothing here would notice if it stopped.
+const HOLE = '\u0000'
+
 const literalClasses = (expression: string) =>
-  [...expression.replace(/[=!]==?\s*['"][^'"]*['"]/g, '').matchAll(/'([^']*)'|"([^"]*)"/g)]
-    .map(m => m[1] ?? m[2] ?? '')
-    .flatMap(literal => literal.split(/\s+/))
-    .filter(Boolean)
+  [
+    ...expression
+      .replace(/[=!]==?\s*['"][^'"]*['"]/g, '')
+      .matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g),
+  ]
+    .map(m => m[1] ?? m[2] ?? m[3] ?? '')
+    .flatMap(literal => literal.replace(/\$\{[^}]*\}/g, HOLE).split(/\s+/))
+    .filter(token => token && !token.includes(HOLE))
 
 describe('components emit no inline Tailwind utilities (D9)', () => {
   for (const file of FILES) {

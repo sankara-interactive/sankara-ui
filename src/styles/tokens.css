@@ -54,6 +54,7 @@
   initial-value: 100vw;
 }
 
+/* Dialog */
 @layer components {
   /* Animated <dialog>. display and overlay must transition discretely, and the
      entry frame comes from @starting-style. The backdrop needs its own pair of
@@ -61,7 +62,12 @@
      Layered for the reason spelled out above .sankara-popover below: unlayered
      rules beat Tailwind's utilities outright, so a consumer's own opacity or
      translate class on the dialog would silently lose to these. */
+  /* margin: auto restores the UA centering of a modal dialog, which Tailwind's
+     preflight zeroes. It was m-auto in the JSX until D9: measured against a
+     4.3.3 build, m-auto beat a consumer's m-0 and m-4 (only mt-8 won), so the
+     one thing a consumer is most likely to want back was the least reachable. */
   .sankara-dialog {
+    margin: auto;
     opacity: 0;
     transition:
       opacity var(--duration-expand) ease,
@@ -102,8 +108,45 @@
     }
   }
 
+  /* Sizes: max-inline-size when centred, a fixed inline-size when docked, since
+     a drawer wants a width rather than a ceiling. Both were utilities before —
+     the max-w-* map actually survived the canonical sort, but the drawer's
+     w-[min(...)] did not, and leaving half of it inline would leave Dialog out
+     of the inline-utilities guard. */
+  .sankara-dialog-sm {
+    max-inline-size: 24rem;
+  }
+
+  .sankara-dialog-md {
+    max-inline-size: 32rem;
+  }
+
+  .sankara-dialog-lg {
+    max-inline-size: 48rem;
+  }
+
   .sankara-dialog-end {
     translate: 100% 0;
+    margin-block: 0;
+    margin-inline: auto 0;
+    block-size: 100dvh;
+    max-block-size: 100dvh;
+    overflow-y: auto;
+  }
+
+  .sankara-dialog-end.sankara-dialog-sm {
+    inline-size: min(20rem, 85vw);
+    max-inline-size: none;
+  }
+
+  .sankara-dialog-end.sankara-dialog-md {
+    inline-size: min(28rem, 90vw);
+    max-inline-size: none;
+  }
+
+  .sankara-dialog-end.sankara-dialog-lg {
+    inline-size: min(36rem, 95vw);
+    max-inline-size: none;
   }
 
   [dir='rtl'] .sankara-dialog-end {
@@ -121,6 +164,7 @@
     }
   }
 }
+/* END dialog */
 
 /* Disclosure */
 @layer components {
@@ -164,7 +208,11 @@
 
   /* Two borders of a square, turned 45deg: a chevron with no icon dependency.
      The `rotate` property rather than `transform`, so a consumer's own
-     transform utility on the indicator composes instead of colliding. */
+     transform utility on the indicator composes instead of colliding.
+     ease-in-out, not the cubic-bezier(0.4, 0, 0.2, 1) that Tailwind's
+     transition-transform used to supply here: the chevron and the panel it
+     points at now share one curve and one duration, which is what they should
+     have had all along. */
   .sankara-disclosure-indicator {
     block-size: 0.625rem;
     inline-size: 0.625rem;
