@@ -5,7 +5,7 @@
 Make the `className` escape hatch reliable on `Carousel`, `Disclosure`, `FaIcon`
 and `Dialog` (the form spec's D9 follow-up).
 
-All three spelled their defaults as Tailwind utilities in JSX, which compile
+All four spelled their defaults as Tailwind utilities in JSX, which compile
 into `@layer utilities` — the consumer's own layer. `cn` is a plain join, so
 both classes reached the class attribute and Tailwind's canonical sort decided
 the winner. Measured against a 4.3.3 build: the package's `gap-6` beat a
@@ -19,10 +19,10 @@ already had. New classes: `.sankara-carousel-dots`, `.sankara-disclosure-summary
 `.sankara-disclosure-indicator`, `.sankara-fa-icon`. The active carousel dot is
 now sized from `[aria-current='true']` rather than a JSX ternary.
 
-Consequence worth checking on upgrade: these three components now get their
-layout from the stylesheet, so `@import "@sankara-ui/core/styles.css"` is no
-longer optional for them. It was already required by the install instructions
-and by `Dialog`, `Disclosure` and `Popover`.
+Consequence worth checking on upgrade: all four now get their layout from the
+stylesheet, so `@import "@sankara-ui/core/styles.css"` is no longer optional for
+them. It was already required by the install instructions and by `Dialog`,
+`Disclosure` and `Popover`.
 
 `Dialog` is included, with a smaller change than it looks: its `max-w-*` size map
 already survived the sort, but `m-auto`, `ms-auto`, `h-dvh`, `max-h-dvh`,
