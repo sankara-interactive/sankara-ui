@@ -628,13 +628,31 @@ what pre-137 Firefox or Safari do (`hyphens: auto` alone, so short words
   iframe-viewport technique above worked around this for the clamp check, but
   the underlying tool behaviour itself is unexplained across two sessions in
   two different fixed sizes (`1720px` in round 1, `320px` in round 2).
-- Whether the two source-order dependencies D3 now names — this stylesheet
+- ~~Whether the two source-order dependencies D3 now names — this stylesheet
   imported after Tailwind's preflight, a project's own rules imported after
   this stylesheet — hold in a real consumer's build pipeline (bundler import
   order, CSS-in-JS extraction order) rather than the single-file
   `@tailwindcss/cli` fixtures and the Storybook Vite build used here. All
   fixtures and the Storybook build follow the README's documented install
-  order by construction; a consumer that doesn't was not tested.
+  order by construction; a consumer that doesn't was not tested.~~
+  **Observed 2026-08-05** in `next-storyblok-template` (the first real
+  consumer): a Next 16 / Tailwind v4 / Turbopack **production build** emits a
+  single CSS file whose `@layer base` preserves exactly the documented order —
+  preflight → this package's richtext block → the consumer's own base rules.
+  Computed-style proof in served output: `h2` inside `.sankara-richtext`
+  resolved `26.2px / 600` (defaults beat preflight), and consumer base rules
+  written after the import win ties on source order. Nuance worth knowing:
+  Tailwind v4 merges `@theme` blocks at build time, so consumer *token*
+  overrides are order-independent in the emitted CSS; only *rule* order
+  carries the D3 dependency. Verification record:
+  `next-storyblok-template/docs/superpowers/plans/2026-08-05-sankara-ui-0.6-integration.md`.
+- **New, observed 2026-08-05:** a renderer that wraps its output in its own
+  element (Storyblok's `StoryblokServerRichText` emits a wrapper `<div>`)
+  silently defeats the flow spacing and measure, exactly as the
+  direct-children contract predicts. Storyblok's `wrapper={false}` composes
+  cleanly: `<RichText><StoryblokServerRichText wrapper={false} …/></RichText>`.
+  Every Storyblok consumer will hit this — the README should carry the
+  example.
 
 **Verdict: the check this task exists to run now passes.** Round 1's defect —
 package defaults losing to Tailwind's own preflight in a bare project, with

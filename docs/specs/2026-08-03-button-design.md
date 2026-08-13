@@ -360,6 +360,14 @@ sitting outside its edge against the white page, and the secondary
 against the same white page. Neither ring blended into the button it
 surrounded or the page behind it.
 
+**Observed 2026-08-05** in `next-storyblok-template` (production build,
+Chrome): `render={<SbLink …/>}` (a custom Link-wrapping component) serves as
+a CMS-driven link-as-button end to end, and a plain `Button` works as
+`Popover`'s `trigger` — the latter only because the default branch's rest
+spread forwards the cloned-in `popoverTarget` to the native `<button>`.
+That interop is undeclared in `ButtonProps`; make it contractual or document
+it (see the Popover spec's matching note).
+
 **Unobserved, explicitly:**
 
 - Real Safari and real Firefox — one engine only, as above. `outline` and

@@ -653,15 +653,39 @@ Not measured, and not to be read as passing:
 
 - **Every other engine.** Chrome 150 only. Nothing here says anything about
   Gecko or WebKit.
-- **Whether a real consumer's bundler preserves the import order these fixtures
+- ~~**Whether a real consumer's bundler preserves the import order these fixtures
   assume.** The fixtures compile a hand-written entry with `@tailwindcss/cli`
   directly, so the order holds by construction. Next 16 / PostCSS / Turbopack
-  were not exercised, and D4's row three depends entirely on that order.
-- **The package's built `dist/styles.css`.** The fixture imports a verbatim copy
-  of `src/styles/tokens.css`; `scripts/copy-styles.mjs` was not in the loop.
-- **The `Heading` component itself.** The fixtures use hand-written markup
+  were not exercised, and D4's row three depends entirely on that order.~~
+  **Observed 2026-08-05** in `next-storyblok-template`: a Next 16 / Turbopack
+  production build preserves the order inside the emitted `@layer base` —
+  package `.h1–.h4` before the consumer's own base rules written after the
+  import. The consumer's same-layer `.h1–.h6 { font-weight: 500 }` twin
+  applied on top of the package font-size in served output; real `Heading`
+  React output (`<h2 class="h2">`, `<h3 class="h4">`) resolved the clamp
+  sizes (30.82px at ~1280 viewport). That consumer had no pre-existing `.hN`
+  class (D2's collision census came back empty there), so that run left the
+  D2 risk unobserved against a pre-existing `.hN`. **Observed 2026-08-05
+  (second consumer, numbers.ch)**: a real legacy `.h1–.h3` scale — family,
+  weight 800, own clamps, letter-spacing — living in `@layer components`
+  coexists exactly as D4's layer-order row predicts: the consumer's rules win
+  deterministically, so the collision is benign in that direction. The
+  retrofit reconciled rather than fought — font-sizes moved into
+  `--heading-1..3`, everything tokens can't express stayed in the consumer's
+  rules — with computed h1/h2 styles byte-identical to the pre-retrofit
+  baseline in a production build. Still unobserved: a consumer whose `.hN`
+  sits in an *earlier or same* layer with a semantically unrelated meaning —
+  the silent-override direction D2 warns about.
+- ~~**The package's built `dist/styles.css`.** The fixture imports a verbatim copy
+  of `src/styles/tokens.css`; `scripts/copy-styles.mjs` was not in the loop.~~
+  **Observed 2026-08-05**: the template consumes the published npm tarball's
+  `dist/styles.css` (0.6.0) end to end.
+- ~~**The `Heading` component itself.** The fixtures use hand-written markup
   matching its documented output (`<h3 class="h4">`), not React render output.
-  The component's own contract is covered by its jsdom tests.
+  The component's own contract is covered by its jsdom tests.~~ **Observed
+  2026-08-05**: real React render output in a served Next 16 production build,
+  including `level`/`visual` split (`<Heading level={3} visual={4}>` in an
+  accordion summary).
 - **A root font-size other than 16px.** brillen-werk's `html { font-size: 18px }`
   at `md` shifts every crossover, as the Tokens section says; not measured.
 - **The exact ceiling-engagement widths** (1281 / 1285 / 1287 / 1309px). Only
