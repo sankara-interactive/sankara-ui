@@ -2,6 +2,7 @@ import { createRef } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { Button } from './Button.js'
 import { Popover } from './Popover.js'
 
 const panelOf = (container: HTMLElement) => container.querySelector('[popover]') as HTMLElement
@@ -18,6 +19,20 @@ describe('Popover wiring', () => {
     expect(panelOf(container)).toHaveAttribute('id', 'nav-services')
     expect(panelOf(container)).toHaveAttribute('popover', 'auto')
     expect(panelOf(container).className).toContain('sankara-popover')
+  })
+
+  it('wires a Button trigger, whose props declare the popover attributes', () => {
+    // Regression: this worked only through Button's rest-prop spread, with
+    // popoverTarget absent from ButtonProps — so it was a type error to pass
+    // directly, and one prop-filtering change away from silently not opening.
+    const { container } = render(
+      <Popover id="footnote-1" trigger={<Button>Open</Button>}>
+        <p>content</p>
+      </Popover>
+    )
+    expect(triggerOf()).toHaveAttribute('popovertarget', 'footnote-1')
+    expect(triggerOf().className).toContain('sankara-popover-trigger')
+    expect(panelOf(container)).toHaveAttribute('id', 'footnote-1')
   })
 
   it('sets the same anchor custom property on both elements', () => {

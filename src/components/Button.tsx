@@ -15,9 +15,23 @@ import { cn } from '../utilities/cn.js'
 // Deliberately not the whole <button> prop set: formAction, name, value and
 // form are meaningless on an anchor, and href can never be passed here at all.
 // Element-specific props belong on the element handed to `render`.
+//
+// popoverTarget/popoverTargetAction are contractual, not incidental: Popover
+// wires its trigger with cloneElement, so a <Button> trigger receives
+// popoverTarget as a prop. It reached the DOM before this via the rest-prop
+// spread alone — working by accident, and a type error for anyone passing it
+// directly. Declared here so the Button/Popover pairing is part of the API.
 type SharedProps = Pick<
   ComponentPropsWithoutRef<'button'>,
-  'id' | 'onClick' | 'onFocus' | 'onBlur' | 'title' | 'tabIndex' | 'style'
+  | 'id'
+  | 'onClick'
+  | 'onFocus'
+  | 'onBlur'
+  | 'title'
+  | 'tabIndex'
+  | 'style'
+  | 'popoverTarget'
+  | 'popoverTargetAction'
 >
 
 export type ButtonProps = SharedProps &
