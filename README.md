@@ -90,8 +90,12 @@ Fonts are yours: no component sets a family.
 ### Deprecated names (removed in 1.0)
 
 Each still works: its replacement defaults to `var(<old name>)`, so an override
-of the old name keeps driving the component, and the old utilities
-(`text-muted`, `bg-surface`, …) keep generating. Rename at your own pace.
+of the old name in your `@theme` keeps driving the component, and the old
+utilities (`text-muted`, `bg-surface`, …) keep generating. Rename at your own
+pace — with one exception: an old name overridden on a selector
+(`.dark { --color-muted: … }`, `.section { --color-surface: … }`) no longer
+reaches the components, because the replacement was already resolved at
+`:root`. Move those overrides to the new name before upgrading.
 
 | Deprecated | Use instead |
 | --- | --- |

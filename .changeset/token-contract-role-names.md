@@ -15,9 +15,11 @@ Deprecated, removed in 1.0 — each replacement defaults to `var(<old>)`:
 `--color-error` → `--color-destructive`.
 
 Package component defaults are visually unchanged, and an override of a
-deprecated name keeps driving its replacement. Two things can still change on
-upgrade: the new names generate new utilities (`bg-card`, `border-border`, …),
-so a class of that name already in your markup starts applying; and a theme
+deprecated name in your `@theme` keeps driving its replacement. Three things can
+still change on upgrade: an old name overridden on a selector (`.dark`, a
+section class) no longer reaches the components — move it to the new name; the
+new names generate new utilities (`bg-card`, `border-border`, …), so a class of
+that name already in your markup starts applying; and a theme
 that already defines one of the new names with another meaning wins over the
 package — djalicunda.com's `--color-input` (a field background) would become the
 `Field` border. The README's "Themed sections" recipe re-colours every
