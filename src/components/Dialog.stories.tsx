@@ -13,7 +13,7 @@ function Demo({ label, ...props }: { label: string } & Omit<DialogProps, 'open' 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-card bg-primary px-5 py-2.5 text-primary-contrast"
+        className="rounded-card bg-primary px-5 py-2.5 text-primary-foreground"
       >
         {label}
       </button>
@@ -23,12 +23,12 @@ function Demo({ label, ...props }: { label: string } & Omit<DialogProps, 'open' 
         open={open}
         onRequestClose={() => setOpen(false)}
         aria-labelledby="dialog-title"
-        className="rounded-card bg-surface p-8 text-on-surface shadow-raised"
+        className="rounded-card bg-card p-8 text-card-foreground shadow-raised"
       >
         <h2 id="dialog-title" className="mb-4 text-xl font-medium">
           An welchem Standort möchten Sie einen Termin vereinbaren?
         </h2>
-        <p className="mb-6 text-muted">
+        <p className="mb-6 text-muted-foreground">
           Escape, ein Klick auf den Hintergrund und der Abbrechen-Button lösen alle dieselbe
           Schliess-Anfrage aus.
         </p>
@@ -37,7 +37,7 @@ function Demo({ label, ...props }: { label: string } & Omit<DialogProps, 'open' 
           type="button"
           autoFocus
           onClick={() => setOpen(false)}
-          className="rounded-card border border-muted px-5 py-2.5"
+          className="rounded-card border border-border px-5 py-2.5"
         >
           Abbrechen
         </button>

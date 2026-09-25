@@ -5,7 +5,7 @@ const meta: Meta<typeof Carousel> = { component: Carousel, title: 'Carousel' }
 export default meta
 
 const Slide = ({ n }: { n: number }) => (
-  <div className="flex aspect-[4/3] items-center justify-center rounded-card bg-surface text-on-surface shadow-raised">
+  <div className="flex aspect-[4/3] items-center justify-center rounded-card bg-card text-card-foreground shadow-raised">
     Slide {n}
   </div>
 )

@@ -4,8 +4,8 @@ import { Button } from './Button.js'
 const meta: Meta<typeof Button> = { component: Button, title: 'Button' }
 export default meta
 
-const skin = 'rounded-card bg-primary px-5 py-2.5 font-medium text-primary-contrast'
-const skinSecondary = 'rounded-card border border-muted px-5 py-2.5 font-medium text-on-surface'
+const skin = 'rounded-card bg-primary px-5 py-2.5 font-medium text-primary-foreground'
+const skinSecondary = 'rounded-card border border-border px-5 py-2.5 font-medium text-card-foreground'
 
 export const Default: StoryObj<typeof Button> = {
   render: () => (
@@ -29,8 +29,8 @@ export const Submit: StoryObj<typeof Button> = {
   render: () => (
     <form className="flex items-end gap-4 p-8" onSubmit={event => event.preventDefault()}>
       <label className="flex flex-col gap-1">
-        <span className="text-sm text-muted">E-Mail</span>
-        <input className="rounded-card border border-muted px-3 py-2" type="email" />
+        <span className="text-sm text-muted-foreground">E-Mail</span>
+        <input className="rounded-card border border-border px-3 py-2" type="email" />
       </label>
       <Button className={skin} type="submit">Absenden</Button>
       <Button className={skinSecondary}>Zurücksetzen (kein submit)</Button>
