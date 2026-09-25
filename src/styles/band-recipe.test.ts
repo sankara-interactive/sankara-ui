@@ -26,8 +26,8 @@ describe('section theming recipe', () => {
     const rules = css
       .slice(css.indexOf('}', css.indexOf('@theme')) + 1)
       .replace(/\/\*[\s\S]*?\*\//g, '')
-    const reads = new Set([...rules.matchAll(COLOUR_READ)].map(m => m[1]))
-    const declared = new Set([...recipe.matchAll(/^\s*(--[\w-]+):/gm)].map(m => m[1]))
+    const reads = new Set([...rules.matchAll(COLOUR_READ)].map(m => m[1]!))
+    const declared = new Set([...recipe.matchAll(/^\s*(--[\w-]+):/gm)].map(m => m[1]!))
     const missing = [...reads].filter(token => !declared.has(token) && !EXCLUDED.includes(token))
     expect(missing).toEqual([])
   })
