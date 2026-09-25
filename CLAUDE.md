@@ -44,8 +44,10 @@ one-file-per-source, so what's in `src` is what ships.
   array and the `DEPRECATED_TOKENS` old → new map), `src/styles/tokens.css`
   (`@theme` defaults), the README table, and the README's `band-accent` recipe.
   `tokens.test.ts` fails if a `TOKENS` entry has no CSS default or a replacement
-  does not default to `var(<old>)`; `band-recipe.test.ts` fails if a component
-  reads a colour the recipe does not re-declare.
+  does not default to `var(<old>)`; `band-recipe.test.ts` fails if a rule reads
+  a `TOKENS` entry that is neither re-declared by the recipe, excluded on
+  purpose, nor listed in its `NOT_COLOUR` — so a new token must be classified
+  there.
   Components style themselves through these tokens (`bg-primary`,
   `rounded-card`, …) — never hardcode colours or radii.
 - **Peer range spans FontAwesome 6 and 7.** Behaviour differs between them

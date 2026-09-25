@@ -81,10 +81,13 @@ of them in your own `@theme` block, after the import:
 | `--carousel-dot-active` | Active `Carousel` dot, defaults to `--color-primary` |
 | `--field-accent` | Native checkbox and radio accent colour, defaults to `--color-primary` |
 
-The colour roles use [shadcn/ui](https://ui.shadcn.com/docs/theming)'s names.
-Two of shadcn's are absent on purpose: `--color-muted` still means secondary
-*text* here until 1.0 (below), and there is no shared `--radius`, because
-deriving one would redefine Tailwind's own `rounded-*` scale in every consumer.
+The colour roles use [shadcn/ui](https://ui.shadcn.com/docs/theming)'s names —
+the subset a component or the section recipe below reads, so `secondary`,
+`popover`, `chart-*` and `sidebar-*` are not shipped; define them in your own
+theme if you need them. Two differ on purpose: `--color-muted` still means
+secondary *text* here until 1.0 (below), and there is no shared `--radius`,
+because deriving one would redefine Tailwind's own `rounded-*` scale in every
+consumer.
 Fonts are yours: no component sets a family.
 
 ### Deprecated names (removed in 1.0)
@@ -116,7 +119,10 @@ Custom properties inherit, so a section re-themes the components inside it by
 re-declaring the roles they read on its root element. Declare **all** of them:
 the defaults above resolve once, at `:root`, so a role you leave out keeps the
 page's value inside the band — and overriding a deprecated name on an element
-does not reach its replacement at all.
+does not reach its replacement at all. The same goes for your own markup: a
+deprecated utility (`text-muted`, `bg-surface`) inside a band still reads the
+old name, which the recipe does not re-declare, so it keeps the page's colour.
+Rename those before putting them in a band.
 
 ```css
 @utility band-accent {

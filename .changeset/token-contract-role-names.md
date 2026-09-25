@@ -22,5 +22,11 @@ new names generate new utilities (`bg-card`, `border-border`, …), so a class o
 that name already in your markup starts applying; and a theme
 that already defines one of the new names with another meaning wins over the
 package — djalicunda.com's `--color-input` (a field background) would become the
-`Field` border. The README's "Themed sections" recipe re-colours every
+`Field` border. therapie-im-zentrum's existing `--color-accent` wins the same
+way; nothing reads it today, but it becomes the band ground if that site adopts
+the recipe.
+
+`DEPRECATED_TOKENS` (old → new) is exported next to `TOKENS`, and `TOKENS`
+grows by the twelve new names: code typed against its exact tuple (an
+exhaustive `Record<(typeof TOKENS)[number], …>`) needs the new keys. The README's "Themed sections" recipe re-colours every
 component inside a band.
