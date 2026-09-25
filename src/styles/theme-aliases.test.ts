@@ -59,6 +59,12 @@ describe('deprecated token aliases in a compiled consumer build', () => {
     }
   )
 
+  it('keeps an old name reached only through package CSS, with no utility in markup', async () => {
+    // .sankara-field-control reads --color-input -> --color-border -> --color-muted.
+    const vars = rootVars(await compile(`--color-muted: ${OVERRIDE};`, []))
+    expect(resolve(vars, '--color-input')).toBe(OVERRIDE)
+  })
+
   it('still generates the old utilities consumers already use', async () => {
     const root = await compile('', ['text-muted', 'text-primary-contrast', 'bg-surface'])
     const css = root.toString()
