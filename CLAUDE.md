@@ -40,9 +40,12 @@ one-file-per-source, so what's in `src` is what ships.
   (`Carousel.tsx` does; `Icon.tsx` deliberately doesn't, so it stays an RSC).
   `scripts/check-directives.mjs` fails the build if a source declares it and the
   emitted `dist` file lost it.
-- **Token contract, three places in sync:** `src/styles/tokens.ts` (`TOKENS`
-  array), `src/styles/tokens.css` (`@theme` defaults), and the README table.
-  `src/styles/tokens.test.ts` fails if a `TOKENS` entry has no CSS default.
+- **Token contract, four places in sync:** `src/styles/tokens.ts` (`TOKENS`
+  array and the `DEPRECATED_TOKENS` old → new map), `src/styles/tokens.css`
+  (`@theme` defaults), the README table, and the README's `band-accent` recipe.
+  `tokens.test.ts` fails if a `TOKENS` entry has no CSS default or a replacement
+  does not default to `var(<old>)`; `band-recipe.test.ts` fails if a component
+  reads a colour the recipe does not re-declare.
   Components style themselves through these tokens (`bg-primary`,
   `rounded-card`, …) — never hardcode colours or radii.
 - **Peer range spans FontAwesome 6 and 7.** Behaviour differs between them
