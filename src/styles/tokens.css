@@ -23,6 +23,24 @@
   --carousel-dot-active: var(--color-primary);
   --color-error: oklch(0.55 0.19 25);
   --field-accent: var(--color-primary);
+
+  /* Role tokens under shadcn/ui's names -- see
+     docs/specs/2026-09-25-token-contract-design.md. Until 1.0 every one that
+     replaces an older name defaults to it, so a consumer's override of the old
+     name keeps driving the component. Aliases resolve at :root: a section that
+     re-themes itself must set these names, not the deprecated ones. */
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.25 0.02 275);
+  --color-primary-foreground: var(--color-primary-contrast);
+  --color-card: var(--color-surface);
+  --color-card-foreground: var(--color-on-surface);
+  --color-muted-foreground: var(--color-muted);
+  --color-border: var(--color-muted);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-focus);
+  --color-destructive: var(--color-error);
+  --color-accent: var(--color-primary);
+  --color-accent-foreground: var(--color-primary-foreground);
 }
 
 /* --richtext-measure is registered, and it has to be. `ch` is font-relative, so
