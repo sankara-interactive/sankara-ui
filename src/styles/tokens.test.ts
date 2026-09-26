@@ -1,7 +1,7 @@
 // @vitest-environment node
 import fs from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { TOKENS } from './tokens.js'
+import { DEPRECATED_TOKENS, TOKENS } from './tokens.js'
 
 const css = fs.readFileSync(new URL('./tokens.css', import.meta.url), 'utf8')
 
@@ -32,6 +32,21 @@ describe('token contract', () => {
     const theme = css.slice(open, end)
     const outside = TOKENS.filter(token => !theme.includes(`${token}:`))
     expect(outside).toEqual([])
+  })
+
+  it('points every replacement token at the name it deprecates', () => {
+    const wrong = Object.entries(DEPRECATED_TOKENS).filter(
+      ([old, next]) => !css.includes(`${next}: var(${old});`)
+    )
+    expect(wrong).toEqual([])
+  })
+
+  it('keeps both halves of every deprecation in the documented contract', () => {
+    const listed = new Set<string>(TOKENS)
+    const missing = Object.entries(DEPRECATED_TOKENS)
+      .flat()
+      .filter(token => !listed.has(token))
+    expect(missing).toEqual([])
   })
 })
 

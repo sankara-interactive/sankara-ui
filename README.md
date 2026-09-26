@@ -50,16 +50,23 @@ of them in your own `@theme` block, after the import:
 
 | Token | Purpose |
 | --- | --- |
-| `--color-primary` | Accent — active carousel dot, emphasis |
-| `--color-primary-contrast` | Foreground on `--color-primary` |
-| `--color-surface` | Card and panel background |
-| `--color-on-surface` | Body text on `--color-surface` |
-| `--color-muted` | Secondary text, inactive controls |
-| `--radius-card` | Corner radius for cards and panels |
+| `--color-background` | Page ground; set by a themed section (see below) |
+| `--color-foreground` | Body text on `--color-background` |
+| `--color-primary` | Brand colour — links in rich text, active carousel dot, checkbox/radio accent |
+| `--color-primary-foreground` | Text on `--color-primary` |
+| `--color-card` | Card, panel and field-control background |
+| `--color-card-foreground` | Text on `--color-card` |
+| `--color-muted-foreground` | Secondary text — field descriptions, inactive carousel dots |
+| `--color-border` | Hairlines — rich text tables, `hr`, blockquote |
+| `--color-input` | Field-control border, defaults to `--color-border` |
+| `--color-ring` | Focus ring on `Button` and fields |
+| `--color-destructive` | Error message text |
+| `--color-accent` | Accent band ground, defaults to `--color-primary` |
+| `--color-accent-foreground` | Text on `--color-accent` |
+| `--radius-card` | Corner radius for cards, panels and field controls |
 | `--shadow-raised` | Elevation for raised surfaces |
 | `--duration-expand` | Open/close duration for `Disclosure` and `Dialog` |
 | `--color-backdrop` | `::backdrop` behind an open `Dialog` |
-| `--color-focus` | Focus ring on `Button`, defaults to `--color-primary` |
 | `--richtext-flow` | Vertical rhythm between rich text blocks |
 | `--richtext-measure` | Line length when `RichText` applies the measure |
 | `--richtext-h1` | `h1` size inside rich text, fluid |
@@ -70,10 +77,74 @@ of them in your own `@theme` block, after the import:
 | `--heading-2` | `Heading` `.h2` size, fluid |
 | `--heading-3` | `Heading` `.h3` size, fluid |
 | `--heading-4` | `Heading` `.h4` size, fluid |
-| `--carousel-dot` | Inactive `Carousel` dot, defaults to `--color-muted` |
+| `--carousel-dot` | Inactive `Carousel` dot, defaults to `--color-muted-foreground` |
 | `--carousel-dot-active` | Active `Carousel` dot, defaults to `--color-primary` |
-| `--color-error` | Error message text |
-| `--field-accent` | Native checkbox and radio accent colour |
+| `--field-accent` | Native checkbox and radio accent colour, defaults to `--color-primary` |
+
+The colour roles use [shadcn/ui](https://ui.shadcn.com/docs/theming)'s names —
+the subset a component or the section recipe below reads, so `secondary`,
+`popover`, `chart-*` and `sidebar-*` are not shipped; define them in your own
+theme if you need them. Two differ on purpose: `--color-muted` still means
+secondary *text* here until 1.0 (below), and there is no shared `--radius`,
+because deriving one would redefine Tailwind's own `rounded-*` scale in every
+consumer.
+Fonts are yours: no component sets a family.
+
+### Deprecated names (removed in 1.0)
+
+Each still works: its replacement defaults to `var(<old name>)`, so an override
+of the old name in your `@theme` keeps driving the component, and the old
+utilities (`text-muted`, `bg-surface`, …) keep generating. Rename at your own
+pace — with one exception: an old name overridden on a selector
+(`.dark { --color-muted: … }`, `.section { --color-surface: … }`) no longer
+reaches the components, because the replacement was already resolved at
+`:root`. Move those overrides to the new name before upgrading.
+
+| Deprecated | Use instead |
+| --- | --- |
+| `--color-primary-contrast` | `--color-primary-foreground` |
+| `--color-surface` | `--color-card` |
+| `--color-on-surface` | `--color-card-foreground` |
+| `--color-muted` | `--color-muted-foreground` |
+| `--color-focus` | `--color-ring` |
+| `--color-error` | `--color-destructive` |
+
+If your own theme already uses one of the new names with another meaning —
+say `--color-input` as a field *background* — yours wins, and the package will
+use it as the field border. Rename yours before adopting `Field`.
+
+### Themed sections
+
+Custom properties inherit, so a section re-themes the components inside it by
+re-declaring the roles they read on its root element. Declare **all** of them:
+the defaults above resolve once, at `:root`, so a role you leave out keeps the
+page's value inside the band — and overriding a deprecated name on an element
+does not reach its replacement at all. The same goes for your own markup: a
+deprecated utility (`text-muted`, `bg-surface`) inside a band still reads the
+old name, which the recipe does not re-declare, so it keeps the page's colour.
+Rename those before putting them in a band.
+
+```css
+@utility band-accent {
+  --color-background: var(--color-accent);
+  --color-foreground: var(--color-accent-foreground);
+  --color-primary: var(--color-accent-foreground);
+  --color-border: color-mix(in oklch, var(--color-accent-foreground) 30%, transparent);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-accent-foreground);
+  --color-card: var(--color-accent);
+  --color-card-foreground: var(--color-accent-foreground);
+  --color-muted-foreground: color-mix(in oklch, var(--color-accent-foreground) 70%, transparent);
+  --carousel-dot: var(--color-muted-foreground);
+  --carousel-dot-active: var(--color-accent-foreground);
+  --field-accent: var(--color-accent-foreground);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+```
+
+`--color-destructive` stays: an error is still red on a band. `--color-backdrop`
+stays: a dialog's backdrop sits in the top layer, outside any section.
 
 ## Icons
 
@@ -163,6 +234,8 @@ white dots on a violet band:
 }
 ```
 
+Inside a themed section (see Theming) the recipe already sets both.
+
 ## Button
 
 Correctness, not appearance. `Button` gives you `type="button"` by default, one
@@ -231,8 +304,8 @@ link tells assistive technology something untrue. Don't render the link instead.
 
 ### Focus and styling
 
-The focus ring is `outline: 2px solid var(--color-focus)`, offset from the
-control, and appears for keyboard users only. Override `--color-focus` in your
+The focus ring is `outline: 2px solid var(--color-ring)`, offset from the
+control, and appears for keyboard users only. Override `--color-ring` in your
 own `@theme`; it defaults to `--color-primary`.
 
 The component's own rules live in `@layer components`, so any Tailwind utility
@@ -300,7 +373,7 @@ import { Popover } from '@sankara-ui/core'
 <li>
   <Popover
     id={`nav-${item.id}`}
-    className="w-72 rounded-card bg-surface p-2 text-on-surface shadow-raised"
+    className="w-72 rounded-card bg-card p-2 text-card-foreground shadow-raised"
     trigger={
       <button type="button" className="flex items-center gap-2">
         Leistungen
@@ -519,7 +592,7 @@ with `Field` or raw radios instead.
 `Popover` ship structure only and leave background, border and radius to you. The
 form controls do not: Tailwind preflight zeroes `border-width` on every element,
 so a control with no surface is invisible rather than merely unstyled. The
-default uses `--color-surface`, `--color-muted` and `--radius-card`, and lives in
+default uses `--color-card`, `--color-input` and `--radius-card`, and lives in
 `@layer components` — so one utility per property overrides any of it:
 
 ```tsx

@@ -158,7 +158,7 @@ describe('rich text stylesheet', () => {
     // `text-center` block would compute `start` while its siblings centre.
     expect(table).not.toContain('text-align')
     const cells = ruleFor(':where(.sankara-richtext) :is(th, td)')
-    expect(cells).toContain('border: 1px solid var(--color-muted)')
+    expect(cells).toContain('border: 1px solid var(--color-border)')
     expect(cells).toContain('padding:')
     // th is the exception: the UA stylesheet really does set `center` on it.
     const th = ruleFor(':where(.sankara-richtext) th')
@@ -171,6 +171,12 @@ describe('rich text stylesheet', () => {
   })
 
   it('restores hr and gives blockquote a fallback', () => {
+    expect(ruleFor(':where(.sankara-richtext) hr')).toContain(
+      'border-block-start: 1px solid var(--color-border)'
+    )
+    expect(ruleFor(':where(.sankara-richtext) blockquote')).toContain(
+      'border-inline-start: 2px solid var(--color-border)'
+    )
     expect(ruleFor(':where(.sankara-richtext) hr')).toContain('border-block-start')
     expect(ruleFor(':where(.sankara-richtext) blockquote')).toContain(
       'border-inline-start'

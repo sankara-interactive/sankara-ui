@@ -24,14 +24,14 @@ describe('field stylesheet', () => {
 
   it('gives the control a visible surface from existing globals', () => {
     const control = ruleFor('.sankara-field-control')
-    expect(control).toContain('background: var(--color-surface)')
-    expect(control).toContain('border: 1px solid var(--color-muted)')
+    expect(control).toContain('background: var(--color-card)')
+    expect(control).toContain('border: 1px solid var(--color-input)')
     expect(control).toContain('border-radius: var(--radius-card)')
   })
 
   it('rings on focus-visible only, from the shared focus token', () => {
     const ring = css.match(/\.sankara-field-control:focus-visible[^{]*\{[^}]*}/s)?.[0]
-    expect(ring).toContain('outline: 2px solid var(--color-focus)')
+    expect(ring).toContain('outline: 2px solid var(--color-ring)')
     expect(ring).toContain('outline-offset: 2px')
   })
 
@@ -48,10 +48,16 @@ describe('field stylesheet', () => {
   })
 
   it('colours the error text but never uses colour as the only cue', () => {
-    expect(ruleFor('.sankara-field-error')).toContain('color: var(--color-error)')
+    expect(ruleFor('.sankara-field-error')).toContain('color: var(--color-destructive)')
     // No [aria-invalid] selector exists at all -- the message element is the
     // only cue, so nothing in the stylesheet recolours the control on error.
     expect(css).not.toMatch(/\[aria-invalid\]/)
+  })
+
+  it('mutes the description with the secondary-text role', () => {
+    expect(ruleFor('.sankara-field-description')).toContain(
+      'color: var(--color-muted-foreground)'
+    )
   })
 
   it('ships the field rules inside @layer components so consumer utilities win', () => {

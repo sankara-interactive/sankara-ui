@@ -33,7 +33,7 @@ describe('button stylesheet', () => {
 
   it('draws a focus ring from the token, not from currentColor', () => {
     const focus = css.match(/\.sankara-button:focus-visible \{[^}]*\}/s)?.[0] ?? ''
-    expect(focus).toContain('outline: 2px solid var(--color-focus)')
+    expect(focus).toContain('outline: 2px solid var(--color-ring)')
     // The value, not just the property: an offset must draw the ring outward
     // against the page, not inward against the button — `-2px` would still
     // `toContain('outline-offset')` while recreating the invisibility bug
@@ -46,6 +46,7 @@ describe('button stylesheet', () => {
 
   it('declares the focus token with a default', () => {
     expect(css).toMatch(/--color-focus:\s*var\(--color-primary\)/)
+    expect(css).toMatch(/--color-ring:\s*var\(--color-focus\)/)
   })
 
   it('has no disabled rule — the native attribute needs no help', () => {

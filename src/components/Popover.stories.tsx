@@ -11,7 +11,7 @@ export const NavDropdown: StoryObj<typeof Popover> = {
         <li>
           <Popover
             id="nav-leistungen"
-            className="w-72 rounded-card bg-surface p-2 text-on-surface shadow-raised"
+            className="w-72 rounded-card bg-card p-2 text-card-foreground shadow-raised"
             trigger={
               <button type="button" className="flex items-center gap-2 font-medium">
                 Leistungen
@@ -28,7 +28,7 @@ export const NavDropdown: StoryObj<typeof Popover> = {
         <li>
           <Popover
             id="nav-ueber-uns"
-            className="w-72 rounded-card bg-surface p-2 text-on-surface shadow-raised"
+            className="w-72 rounded-card bg-card p-2 text-card-foreground shadow-raised"
             trigger={<button type="button" className="font-medium">Über uns</button>}
           >
             <ul>
@@ -47,7 +47,7 @@ export const FilterPanel: StoryObj<typeof Popover> = {
       <Popover
         id="filter-thema"
         placement="bottom"
-        className="w-96 rounded-card bg-surface p-6 text-on-surface shadow-raised"
+        className="w-96 rounded-card bg-card p-6 text-card-foreground shadow-raised"
         trigger={<button type="button" className="rounded-full border px-4 py-2">Thema</button>}
       >
         <div className="flex flex-wrap gap-2">
@@ -72,7 +72,7 @@ export const Placements: StoryObj<typeof Popover> = {
               key={placement}
               id={`placement-${placement}`}
               placement={placement}
-              className="w-48 rounded-card bg-surface p-4 text-on-surface shadow-raised"
+              className="w-48 rounded-card bg-card p-4 text-card-foreground shadow-raised"
               trigger={<button type="button" className="rounded border px-3 py-2">{placement}</button>}
             >
               <p>{placement}</p>

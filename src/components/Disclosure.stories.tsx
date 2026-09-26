@@ -38,9 +38,9 @@ function List({
           indicator={indicator}
           defaultOpen={openFirst && i === 0}
           summary={<h3 className="font-medium">{item.question}</h3>}
-          className="border-t border-muted py-5"
+          className="border-t border-border py-5"
         >
-          <p className="pt-4 text-muted">{item.answer}</p>
+          <p className="pt-4 text-muted-foreground">{item.answer}</p>
         </Disclosure>
       ))}
     </div>

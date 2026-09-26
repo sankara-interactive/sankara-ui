@@ -60,6 +60,7 @@ describe('carousel stylesheet', () => {
   it('declares theme defaults for both dot tokens', () => {
     const theme = css.slice(0, css.indexOf('}'))
     expect(theme).toContain('--carousel-dot:')
+    expect(theme).toContain('--carousel-dot: var(--color-muted-foreground)')
     expect(theme).toContain('--carousel-dot-active:')
   })
 })

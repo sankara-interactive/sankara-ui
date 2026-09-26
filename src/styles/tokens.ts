@@ -24,4 +24,27 @@ export const TOKENS = [
   '--carousel-dot-active',
   '--color-error',
   '--field-accent',
+  '--color-background',
+  '--color-foreground',
+  '--color-primary-foreground',
+  '--color-card',
+  '--color-card-foreground',
+  '--color-muted-foreground',
+  '--color-border',
+  '--color-input',
+  '--color-ring',
+  '--color-destructive',
+  '--color-accent',
+  '--color-accent-foreground',
 ] as const
+
+/** Deprecated name → its replacement. The replacement defaults to `var(<old>)`
+    until 1.0 removes the old name. */
+export const DEPRECATED_TOKENS = {
+  '--color-primary-contrast': '--color-primary-foreground',
+  '--color-surface': '--color-card',
+  '--color-on-surface': '--color-card-foreground',
+  '--color-muted': '--color-muted-foreground',
+  '--color-focus': '--color-ring',
+  '--color-error': '--color-destructive',
+} as const
