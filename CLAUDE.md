@@ -18,13 +18,14 @@ one-file-per-source, so what's in `src` is what ships.
 
 ## Architecture
 
-- **Native platform element first — markup included.** Before reaching for a
-  headless library or React state, check whether HTML already does it:
-  `<details>/<summary>` for disclosure (including exclusive accordions via
-  `name`), `<dialog>` for modals, `<input type="date">` over a picker. Native
-  keeps the component a server component, ships no JavaScript, and gets the
-  keyboard and ARIA contract right by construction. Base UI is the documented
-  fallback for what the platform genuinely lacks — not the default.
+- **Two layers — see `docs/specs/2026-09-28-two-layer-direction.md`.**
+  Layer 1 is behaviour: Base UI (`@base-ui/react`, a required peer), native elements
+  where they keep a server component with a complete keyboard/ARIA contract
+  (`<details>`), and own code only for what neither covers. Layer 2 is
+  styling: parts wrapping Base UI's one-to-one, styled by exported
+  `tailwind-variants` definitions that projects `extend` and bind with a
+  factory (`createButton(def)`). Components migrate one at a time
+  (`Button` first); until one has, it is still a single prop-driven component.
 - **Public surface is `src/index.ts`, plus `Icon`.** A component not re-exported
   from the barrel is invisible to consumers. Three export paths exist in
   `package.json`: `.` (JS), `./icon` (→ `dist/components/Icon.js`) and
@@ -74,12 +75,9 @@ spec before adding a component. Binding constraints from it:
   brillen-werk.ch). Don't add a component because a design system usually has
   one. `Reveal`, `CountUp`, `Glow`, `BgMark`, `Pill`, `IconBox` are explicitly
   out — single-project visual language.
-- **Base UI** (`@base-ui-components/react`) is the design spec's headless
-  foundation, used *only* where a component needs it — still not a dependency.
-  `Icon` and `Carousel` need nothing, and `docs/specs/2026-08-01-disclosure-design.md`
-  moves Disclosure to native `<details>`; `<dialog>` is expected to do the same
-  for Dialog. If Popover and Menu also land native, reopen that decision rather
-  than leaving it as an unused one.
+- **Base UI** is the headless foundation since 2026-09-28, superseding the
+  design spec's "only where needed, not a dependency". Not re-exported: raw
+  headless use imports `@base-ui/react/<component>` directly.
 - **Prohibited:** Storyblok packages, generated CMS types, data fetching. CMS
   adaptation is the template's job. `next/image` and `next/link` are the only
   Next surfaces permitted, and `next` becomes a peer dep only when an
