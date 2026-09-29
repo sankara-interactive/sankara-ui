@@ -19,11 +19,12 @@ one-file-per-source, so what's in `src` is what ships.
 ## Architecture
 
 - **Two layers — see `docs/specs/2026-09-28-two-layer-direction.md`.**
-  Layer 1 is behaviour: Base UI (`@base-ui/react`, a peer), native elements
+  Layer 1 is behaviour: Base UI (`@base-ui/react`, a required peer), native elements
   where they keep a server component with a complete keyboard/ARIA contract
   (`<details>`), and own code only for what neither covers. Layer 2 is
-  styling: parts mirroring Base UI's, styled by exported `tailwind-variants`
-  definitions that projects `extend`. Components migrate one at a time
+  styling: parts wrapping Base UI's one-to-one, styled by exported
+  `tailwind-variants` definitions that projects `extend` and bind with a
+  factory (`createButton(def)`). Components migrate one at a time
   (`Button` first); until one has, it is still a single prop-driven component.
 - **Public surface is `src/index.ts`, plus `Icon`.** A component not re-exported
   from the barrel is invisible to consumers. Three export paths exist in
