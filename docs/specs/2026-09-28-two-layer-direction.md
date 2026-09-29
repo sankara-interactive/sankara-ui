@@ -148,6 +148,12 @@ not mix inside one `Field`.
   tokens extends it — an exported config alone does nothing, because the stock
   components would keep merging with the package's closed one. A new token is
   now classified in five places, not four.
+- **`className` overrides are part of the contract** (decided 2026-09-29, ahead
+  of a project needing one): a consumer's `rounded-none` beats the package's
+  `rounded-card`. The alternative — restyling only through extended variants,
+  `className` purely additive — needs neither library below, and was declined.
+  Once `tailwind-merge` is in, `tailwind-variants` costs little extra and saves
+  hand-writing the typed `extend` the factories depend on.
 - **`tailwind-variants` and `tailwind-merge` are required peers.** Extension is
   the core API, so definitions and merge configs cross the package boundary; as
   plain dependencies the package and the project could run different copies.
