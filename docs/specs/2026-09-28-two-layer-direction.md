@@ -1,9 +1,9 @@
 # Two-layer architecture — Direction
 
 Date: 2026-09-28
-Status: direction agreed in conversation (Base UI as foundation, breaking
-changes accepted, exported variant definitions); revised after external review
-(Codex, 2026-09-29); no component migrated yet
+Status: direction agreed (Base UI as foundation, breaking changes accepted,
+exported variant definitions). Revised after external review (Codex,
+2026-09-29) and team review (2026-10-04). No component migrated yet.
 Scope: the package's architecture. Supersedes the "Base UI only where needed,
 not a dependency" decision in
 `next-storyblok-template/docs/superpowers/specs/2026-07-29-sankara-ui-design.md`
@@ -11,62 +11,73 @@ and the matching rules in this repo's `CLAUDE.md`.
 
 ## Problem
 
-The original intent was customisable building blocks: the hard behaviour —
-dialog, disclosure, slider, combobox, upload, media player, forms — imported
-per project and styled per project. What shipped from 0.1 to 0.10 is a third
-thing: single styled components configured by props (`Dialog` `size` /
-`placement`, `Popover`, `Disclosure`), styled by `sankara-*` classes in the
-package stylesheet. Two consequences:
+The plan was customisable building blocks: shared behaviour (dialog,
+disclosure, slider, combobox, upload, media player, forms), styled per project.
 
-1. **No composition.** There are no parts. A project cannot put its own markup
-   between trigger and popup, add a second close button, or restyle the
-   backdrop without reaching for a descendant selector.
-2. **Customisation stops at the root.** `className` on the outer element plus
-   the token palette. A project that needs another button style forks the
-   component — the thing a shared package exists to prevent.
+What shipped in 0.1–0.9 is something else: finished components configured by
+props (`Dialog` with `size` / `placement`, `Popover`, `Disclosure`), styled by
+`sankara-*` classes in the package stylesheet. That has two problems:
+
+1. **No composition.** Components have no parts. A project can't put its own
+   markup between trigger and popup, add a second close button, or restyle the
+   backdrop without a descendant selector.
+2. **Customisation stops at the root.** A project gets `className` on the outer
+   element and the token palette, nothing more. Needing another button style
+   means forking the component — exactly what a shared package should prevent.
 
 ## Decision
 
-Two layers, one package.
+One package, two layers: **behaviour** and **styling**.
 
 ### Layer 1 — behaviour
 
-**Base UI (`@base-ui/react`) is the headless foundation**, a **required peer
-dependency** with a tight range. Required, not optional: once the barrel
-exports a Base UI-backed component, its eager import needs the package for
-every consumer — the failure `Icon` is kept out of the barrel to avoid. A peer,
-not a dependency, so the consumer has one copy and one set of contexts. (The
-package was renamed from `@base-ui-components/react`, now deprecated; 1.8.0 at
-time of writing.)
+**Base UI (`@base-ui/react`) is the foundation.** It is a **required peer
+dependency** with a normal caret range (`^1.8.0` today; the floor rises when we
+use something newer).
 
-We do not re-export Base UI. A project that wants a component fully unstyled
-imports `@base-ui/react/<component>` directly, within our peer range.
+- **Required, not optional:** as soon as the barrel (`src/index.ts`) exports a
+  component built on Base UI, every consumer imports Base UI. An optional peer
+  would make the package fail to load where it isn't installed. (`Icon` sits
+  outside the barrel to avoid exactly this with FontAwesome.)
+- **Peer, not dependency:** the consumer then has a single copy of Base UI, so
+  its React contexts are shared.
 
-What this package writes itself in layer 1 is only what neither the platform
-nor Base UI covers — current candidates are an upload/dropzone field and a
-media player. Each goes through the usual evidence survey before a spec.
+We don't re-export Base UI. For a fully unstyled component, a project imports
+`@base-ui/react/<component>` directly.
 
-Native elements stay where they keep a component a **server component with a
-complete keyboard/ARIA contract**. `Disclosure` on `<details>` is the case, and
-it stays deliberately narrow: uncontrolled, native-specific parts (`Root`,
-`Summary`, `Panel`), no claim of Base UI interchangeability. A Base UI
-`Collapsible`/`Accordion` lands separately, and only when a project needs
-controlled state. Where a component needs client JavaScript anyway, Base UI
-replaces the hand-rolled behaviour: `Dialog`'s own scroll lock and
-outside-click detection go.
+(The package used to be `@base-ui-components/react`, now deprecated.)
 
-### Layer 2 — styled
+**Native elements stay** where they give a server component with full keyboard
+and ARIA support out of the box. `Disclosure` on `<details>` is the case:
 
-Styled components **wrap Base UI parts one-to-one** under the same names
-(`Dialog.Root`, `Dialog.Trigger`, `Dialog.Popup`, …): each forwards the
-underlying part's full props, `ref`, and state-aware `className`, and adds
-classes only — no behavioural defaults on leaf parts. That makes the layer
-transparent; it does not make our parts and raw Base UI parts a supported mix,
-and the package does not promise one.
+- It renders on the server and needs no JavaScript.
+- The closed content is in the HTML, so search engines and AI crawlers see it.
+- It supports both **uncontrolled** (`defaultOpen`) and **controlled** use
+  (`open` + `onOpenChange`, wired to the native `toggle` event). It stays a
+  server component; only a controlled caller needs to be a client component.
+- Parts: `Root`, `Summary`, `Panel`.
 
-Styling lives in **exported `tailwind-variants` definitions** — `buttonVariants`,
-`dialogVariants` (with `slots` for parts). A project extends a definition and
-binds it with the component's **factory**:
+Where a component needs client JavaScript anyway, Base UI replaces our own
+behaviour code. Example: `Dialog`'s scroll lock and outside-click handling go.
+
+**Our own behaviour code** is only for what neither the browser nor Base UI
+covers. Shipped: `Carousel`. Candidates: an upload/dropzone field and a media
+player — each needs the usual evidence survey before a spec.
+
+### Layer 2 — styling
+
+Styled components **wrap Base UI parts one-to-one**, with the same names
+(`Dialog.Root`, `Dialog.Trigger`, `Dialog.Popup`, …). Each part:
+
+- passes through all props, `ref` and the state-aware `className` of the Base UI
+  part,
+- adds classes only — no behaviour of its own.
+
+Mixing our parts with raw Base UI parts in one component is not supported.
+
+Styling lives in **exported `tailwind-variants` definitions**: `buttonVariants`,
+`dialogVariants` (with `slots` for the parts). A project extends a definition
+and passes it to the component's **factory**:
 
 ```ts
 import { tv } from 'tailwind-variants'
@@ -81,110 +92,113 @@ export const Button = createButton(
 // <Button intent="ghost"> — typed from the extended definition
 ```
 
-The stock `Button` is `createButton(buttonVariants)`. Why a factory, over the
-two alternatives:
+The stock `Button` is just `createButton(buttonVariants)`.
 
-- **A `variants` prop** passes a function across the RSC boundary — fine for
-  `Button`, fatal for `Dialog`. And TypeScript cannot reliably infer
-  `intent="ghost"` from a definition passed in the same JSX element.
-- **A project wrapper passing `className={button({ intent: 'ghost' })}`**
-  keeps RSC compatibility but loses the typed variant props, and every call
-  site re-implements selection. It stays as the escape hatch, not the model.
+Why a factory? The two alternatives fall short:
 
-Factories are called at module scope. A factory for a Base UI-backed component
-returns a client component, so the project module calling it declares
-`'use client'`.
+- **A `variants` prop** would pass a function from a server to a client
+  component, which RSC doesn't allow (fine for `Button`, breaks `Dialog`).
+  TypeScript also can't reliably type `intent="ghost"` from a definition passed
+  in the same element.
+- **A project wrapper with `className={button({ intent: 'ghost' })}`** works
+  with RSC, but loses typed variant props, and every call site picks classes by
+  hand. It stays available as an escape hatch.
 
-Verified 2026-09-28 against `tailwind-variants` 3.3.1: the extending definition
-keeps the base classes and inherited variants and adds the new ones. Variant
-classes use the token utilities (`bg-primary`, `rounded-card`), so the token
-contract is unchanged: rebranding is still editing a palette.
+Call factories at module level. A factory for a Base UI component returns a
+client component, so the module calling it needs `'use client'`.
 
-**Atoms** are the layer-2 components with no Base UI behaviour behind them.
-Already shipped and migrating: `Button`, `Heading`, `RichText`, `Field`,
-`Input`, `Textarea`, `Select`, `Checkbox`, `RadioGroup`. Candidates, each
-needing two or more surveyed projects before it lands: `Link`, `Badge`,
-`Switch`, `Separator`, `Spinner`, `Skeleton`, `Avatar`. "Evidence beats
-specification" still binds — a component does not ship because design systems
-usually have one. `Button` stays native and a server component; it does not
-move to Base UI's `Button` for symmetry.
+Checked 2026-09-28 with `tailwind-variants` 3.3.1: an extended definition keeps
+the base classes and variants and adds the new ones. Variants use the token
+utilities (`bg-primary`, `rounded-card`), so the token contract doesn't change —
+rebranding is still editing a palette.
+
+**Atoms** are layer-2 components without Base UI behaviour.
+
+- Shipped, to be migrated: `Button`, `Heading`, `RichText`, `Field`, `Input`,
+  `Textarea`, `Select`, `Checkbox`, `RadioGroup`.
+- Candidates, each needing two or more surveyed projects: `Link`, `Badge`,
+  `Switch`, `Separator`, `Spinner`, `Skeleton`, `Avatar`.
+
+"Evidence beats specification" still applies: we don't add a component because
+design systems usually have one. `Button` stays a native server component; it
+doesn't move to Base UI's `Button` just for consistency.
 
 ### Popover
 
-**Base UI**, exposing `Root`/`Trigger`/`Portal`/`Positioner`/`Popup`/`Close`.
-The native version's server-friendliness is not real — `Popover.tsx` is already
-`'use client'` for `useId`, trigger cloning and link-close — and without CSS
-anchor positioning it degrades to a bottom sheet. Base UI's `Positioner` brings
-anchoring, collision flip/shift and logical placement.
+Moves to **Base UI**, with parts `Root`, `Trigger`, `Portal`, `Positioner`,
+`Popup`, `Close`. The current native version isn't really server-friendly —
+`Popover.tsx` is already `'use client'` (for `useId`, trigger cloning and
+closing on link click) — and without CSS anchor positioning it falls back to a
+bottom sheet. Base UI's `Positioner` gives anchoring, flipping/shifting at the
+viewport edge, and logical placement.
 
 ### Forms
 
-**`fieldWiring` stays** as the server-renderable primitive: label, description
-and error markup for native controls and server-action errors, no client code.
-Its known `id ?? name` collision is fixed during the migration. A Base UI-backed
-client form layer (`Form`, validated fields) is a separate component, added when
-a project needs interactive validation — the two validation ownership models do
-not mix inside one `Field`.
+- **`fieldWiring` stays** as the server-rendered base: label, description and
+  error markup for native controls and server-action errors, no client code.
+  Its `id ?? name` collision gets fixed during the migration.
+- A **client form layer** on Base UI (`Form`, validated fields) is a separate
+  component, added when a project needs interactive validation. Server and
+  client validation don't mix inside one `Field`.
 
 ## Consequences
 
-- **No consumer `@source` line.** Class strings move from the stylesheet into
-  emitted JS, and Tailwind does not scan `node_modules` — but an `@source`
-  inside the package's own `styles.css` is resolved relative to that file.
-  Verified 2026-09-29 with `@tailwindcss/postcss`: a class that only exists in
-  `node_modules/pkg/dist/variants/*.js` is absent from the output without the
-  directive and present with `@source "./variants"` in the imported package
-  stylesheet (`node_modules` gitignored, as in a real project). This retires the
-  documented install step, including the one `Icon` needs today (point it at
-  `./components/Icon.js`). Still to check in the packaging smoke test: pnpm's
-  symlinked layout.
-- **`cn` becomes `tailwind-merge`-backed**, so a consumer's `className` beats
-  the variant output it conflicts with. It needs a merge config naming the
-  token scales: verified 2026-09-28 that plain `twMerge('rounded-card
-  rounded-none')` keeps both classes, and that
+- **No more `@source` line for consumers.** Classes move from the stylesheet
+  into the emitted JS, and Tailwind doesn't scan `node_modules`. But an
+  `@source` inside the package's own `styles.css` resolves relative to that
+  file, so the package can register itself.
+  Checked 2026-09-29 with `@tailwindcss/postcss`: a class only in
+  `node_modules/pkg/dist/variants/*.js` is missing without the directive and
+  present with `@source "./variants"` in the package stylesheet. This also
+  covers `Icon` (`@source "./components/Icon.js"`). Still to check in the
+  packaging smoke test: pnpm's symlinked layout.
+- **`cn` uses `tailwind-merge`**, so a consumer's `className` wins over a
+  conflicting variant class. It needs a config that knows our token names:
+  plain `twMerge('rounded-card rounded-none')` keeps both, while
   `extendTailwindMerge({ extend: { theme: { radius: ['card'] } } })` keeps only
-  the last. The config covers every token namespace (colour, radius, shadow,
-  duration), and factories take an optional merge config so a project that adds
-  tokens extends it — an exported config alone does nothing, because the stock
-  components would keep merging with the package's closed one. A new token is
-  now classified in five places, not four.
-- **`className` overrides are part of the contract** (decided 2026-09-29, ahead
-  of a project needing one): a consumer's `rounded-none` beats the package's
-  `rounded-card`. The alternative — restyling only through extended variants,
-  `className` purely additive — needs neither library below, and was declined.
-  Once `tailwind-merge` is in, `tailwind-variants` costs little extra and saves
-  hand-writing the typed `extend` the factories depend on.
-- **`tailwind-variants` and `tailwind-merge` are required peers.** Extension is
-  the core API, so definitions and merge configs cross the package boundary; as
-  plain dependencies the package and the project could run different copies.
-  Tight ranges, matching dev dependencies, documented in the install block.
-- **`'use client'` on the smallest adapter modules**, one per Base UI-backed
-  part, not on a compound namespace module. `Disclosure`, `Heading`, `RichText`,
-  `Button` and `fieldWiring` stay server components.
-- **The stylesheet shrinks, by rule, not by list.** Declarations a utility
-  represents faithfully move to variants. What stays in CSS: tokens and
-  `@property` registrations, keyframes, pseudo-elements (`::details-content`,
-  `::backdrop`), state and browser-fallback selectors, reduced-motion rules,
-  and styling of markup the package does not render (`RichText` prose, the
-  `Heading` base layer). Each migration spec inventories its component's rules
-  against this.
-- **Layer order is tested, not assumed.** "Consumer `className` wins" holds only
-  if the package CSS lands in the layer the install block puts it in. One
-  canonical import arrangement is documented, and a packed Next/Tailwind build
-  verifies the cascade before the first migrated component ships.
-- **Every component API breaks.** One minor per migrated component, each with a
-  changeset carrying that component's migration. The README keeps a table of
-  which components are migrated as of which version; the old `sankara-*`
-  selectors of a component are removed in the minor that migrates it.
+  the last (checked 2026-09-28).
+  - The config covers every token group: colour, radius, shadow, duration.
+  - Factories take an optional merge config, so a project that adds tokens can
+    extend it. Exporting the config alone isn't enough — the stock components
+    would keep using the package's own.
+  - A new token is now registered in five places instead of four.
+- **`className` overrides are part of the contract** (decided 2026-09-29): a
+  consumer's `rounded-none` beats the package's `rounded-card`. The alternative
+  — restyle only through variants, `className` only adds — would need neither
+  library, and was declined. With `tailwind-merge` in, `tailwind-variants` adds
+  little and gives us the typed `extend` the factories need.
+- **`tailwind-variants` and `tailwind-merge` are required peers.** Projects
+  extend our definitions and merge config, so both sides must use the same copy.
+  Caret ranges, matching the dev dependencies, listed in the install block.
+- **`'use client'` only on small per-part modules** for Base UI parts, never on
+  a whole namespace module. `Disclosure`, `Heading`, `RichText`, `Button` and
+  `fieldWiring` stay server components.
+- **The stylesheet shrinks, by rule.** Whatever a utility class expresses
+  exactly moves to variants. What stays in CSS:
+  - tokens and `@property` registrations, keyframes
+  - pseudo-elements (`::details-content`, `::backdrop`)
+  - state and browser-fallback selectors, reduced-motion rules
+  - styling for markup we don't render (`RichText` prose, the `Heading` base
+    layer)
+
+  Each migration spec checks its component's rules against this list.
+- **Layer order is tested.** "Consumer `className` wins" only holds if the
+  package CSS lands in the CSS layer the install block says. We document one
+  import setup and verify it with a packed Next/Tailwind build before the first
+  migrated component ships.
+- **Every component API breaks.** One minor release per migrated component, each
+  with a changeset describing its migration. The README tracks which components
+  are migrated as of which version. A component's old `sankara-*` selectors are
+  removed in the release that migrates it.
 
 ## Migration order
 
-1. **`Button`** — smallest surface; establishes `src/variants/`, the factory,
-   the `tailwind-merge` `cn` and its config, the self-registering `@source`,
-   and the layer-order test.
-2. **`Dialog`** — first component on Base UI parts; retires the hand-rolled
-   scroll lock and outside-click code.
-3. **`Popover`** — onto Base UI.
+1. **`Button`** — smallest surface. Sets up `src/variants/`, the factory, the
+   `tailwind-merge` `cn` and its config, the self-registering `@source`, and
+   the layer-order test.
+2. **`Dialog`** — first component on Base UI parts; drops our own scroll lock
+   and outside-click code.
+3. **`Popover`** — moves to Base UI.
 4. **Form primitives and `Field`** — variants; `fieldWiring` collision fix.
-5. **`Disclosure`** — stays native; gains narrow parts and variants.
+5. **`Disclosure`** — stays native; gains parts, controlled mode and variants.
 6. **`Carousel`** — no Base UI equivalent; gains variants only.
