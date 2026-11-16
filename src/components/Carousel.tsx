@@ -1,119 +1,170 @@
 'use client'
 
+import clsx from 'clsx'
 import {
-  Children,
+  ButtonHTMLAttributes,
+  createContext,
+  Dispatch,
+  DragEvent,
+  HTMLAttributes,
+  ReactNode,
+  RefObject,
+  useContext,
   useRef,
   useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type ReactNode,
 } from 'react'
-import { cn } from '../utilities/cn.js'
-import { slideIndexFromScroll } from '../utilities/carousel.js'
 
-export type CarouselProps = {
-  children: ReactNode
-  /** Accessible name for the carousel as a whole. Required. */
-  label: string
-  /** Slides visible at once. Fractional values peek the next slide. Sets
-      `--carousel-per-view` on the root; override it per breakpoint in your own
-      CSS for responsive slide widths. */
-  perView?: number
-  /** Gap between slides, in pixels. Sets `--carousel-gap` on the root. */
-  gap?: number
-  className?: string
+const CarouselContext = createContext<{
+  carouselRef: RefObject<HTMLDivElement | null>
+  scrollRefs: RefObject<Map<number, HTMLDivElement> | null>
+  getScrollRefs: () => Map<number, HTMLDivElement>
+  activeSlide: number
+  setActiveSlide: Dispatch<React.SetStateAction<number>>
+  navigate: (index: number) => void
+} | null>(null)
+
+function useCarouselContext() {
+  const context = useContext(CarouselContext)
+
+  if (!context) {
+    throw new Error('Carousel components must be used within a Carousel')
+  }
+
+  return context
 }
 
-// jsdom does not implement matchMedia, so guard rather than assume it exists.
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// Based on React Carousel with CSS Snap Scroll by Emil Yangirow: https://codepen.io/yangirov/pen/WNBvoZB
 
-export function Carousel({ children, label, perView = 1, gap = 16, className }: CarouselProps) {
-  const trackRef = useRef<HTMLDivElement>(null)
-  const [index, setIndex] = useState(0)
-  const slides = Children.toArray(children)
+export function Carousel({ children, ...props }: HTMLAttributes<HTMLDivElement>) {
+  const carouselRef = useRef<HTMLDivElement>(null)
+  const scrollRefs = useRef<Map<number, HTMLDivElement> | null>(null)
+  const [activeSlide, setActiveSlide] = useState(0)
 
-  const goTo = (target: number) => {
-    const track = trackRef.current
-    const slide = track?.children[target] as HTMLElement | undefined
-    if (!track || !slide) return
-    track.scrollTo({ left: slide.offsetLeft, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-    setIndex(target)
+  function getScrollRefs() {
+    if (!scrollRefs.current) {
+      scrollRefs.current = new Map()
+    }
+
+    return scrollRefs.current
   }
 
-  const onScroll = () => {
-    const track = trackRef.current
-    if (!track) return
-    const first = track.children[0] as HTMLElement | undefined
-    // The rendered gap can differ from the prop when a consumer overrides
-    // --carousel-gap per breakpoint, so measure it rather than trust the prop.
-    const liveGap = Number.parseFloat(getComputedStyle(track).columnGap) || gap
-    setIndex(slideIndexFromScroll(track.scrollLeft, first?.offsetWidth ?? 0, liveGap))
+  function navigate(index: number) {
+    const slides = Array.from(getScrollRefs().keys())
+    index = (index + slides.length) % slides.length
+    const slide = getScrollRefs().get(index)
+    slide?.scrollIntoView({
+      block: 'nearest',
+      // @ts-expect-error - the `container` is not yet supported in all browsers
+      container: 'nearest',
+    })
   }
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.target !== trackRef.current) return
-    if (event.key === 'ArrowRight') {
-      event.preventDefault()
-      goTo(Math.min(index + 1, slides.length - 1))
+  return (
+    <CarouselContext
+      value={{ carouselRef, scrollRefs, getScrollRefs, activeSlide, setActiveSlide, navigate }}
+    >
+      <div {...props}>{children}</div>
+    </CarouselContext>
+  )
+}
+
+export function CarouselTrack({
+  children: slides,
+  className,
+  ...props
+}: { children: ReactNode[] } & Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'children' | 'onScroll' | 'onDragStart' | 'draggable'
+>) {
+  const { carouselRef, getScrollRefs, setActiveSlide } = useCarouselContext()
+
+  function handleScroll() {
+    if (!carouselRef.current) {
+      return
     }
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault()
-      goTo(Math.max(index - 1, 0))
-    }
+
+    const { scrollLeft, clientWidth } = carouselRef.current
+    const index = Math.round(scrollLeft / clientWidth)
+    setActiveSlide(index)
+  }
+
+  function handleDragStart(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    e.stopPropagation()
   }
 
   return (
     <div
-      role="group"
-      aria-roledescription="carousel"
-      aria-label={label}
-      onKeyDown={onKeyDown}
-      className={cn('sankara-carousel', className)}
-      style={
-        // The props land in PRIVATE variables: an inline declaration of the
-        // public name would beat any consumer stylesheet rule, and
-        // per-breakpoint overrides of --carousel-per-view are the whole point.
-        // The stylesheet reads the public name first, the prop as fallback.
-        {
-          '--_carousel-per-view': perView,
-          '--_carousel-gap': `${gap}px`,
-        } as CSSProperties
-      }
+      className={clsx(
+        'flex snap-x snap-mandatory scrollbar-none flex-nowrap overflow-x-auto scroll-smooth',
+        className
+      )}
+      ref={carouselRef}
+      onScroll={handleScroll}
+      draggable={false}
+      onDragStart={handleDragStart}
+      {...props}
     >
-      <div
-        ref={trackRef}
-        onScroll={onScroll}
-        tabIndex={0}
-        className="sankara-carousel-track"
-      >
-        {slides.map((slide, i) => (
-          <div
-            key={i}
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${i + 1} von ${slides.length}`}
-            className="sankara-carousel-slide"
-          >
-            {slide}
-          </div>
-        ))}
-      </div>
+      {slides?.map((item, index) => (
+        <div
+          key={index}
+          ref={node => {
+            if (!node) {
+              return
+            }
 
-      <div className="sankara-carousel-dots">
-        {slides.map((_, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => goTo(i)}
-            aria-label={`Slide ${i + 1}`}
-            aria-current={i === index}
-            className="sankara-carousel-dot"
-          />
-        ))}
-      </div>
+            const refs = getScrollRefs()
+            refs.set(index, node)
+
+            return () => {
+              refs.delete(index)
+            }
+          }}
+          className="size-full shrink-0 snap-center snap-always select-none"
+        >
+          {item}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function CarouselArrow({
+  direction,
+  children,
+  ...props
+}: {
+  direction: 'prev' | 'next'
+  children: ReactNode
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'>) {
+  const { activeSlide, navigate } = useCarouselContext()
+
+  return (
+    <button
+      {...props}
+      onClick={() => navigate(direction === 'prev' ? activeSlide - 1 : activeSlide + 1)}
+    >
+      {children}
+    </button>
+  )
+}
+export function CarouselDots({ ...props }: HTMLAttributes<HTMLDivElement>) {
+  const { activeSlide, navigate, getScrollRefs } = useCarouselContext()
+  const slidesLength = getScrollRefs().size
+
+  return (
+    <div {...props}>
+      {Array.from({ length: slidesLength }, (_, index) => (
+        <button
+          key={index}
+          className={clsx(
+            'size-2 cursor-pointer rounded-full transition-[width] duration-300',
+            index === activeSlide ? 'w-5 bg-white' : 'bg-white/50'
+          )}
+          onClick={() => navigate(index)}
+          aria-label={`Slide ${index + 1} of ${slidesLength}`}
+        />
+      ))}
     </div>
   )
 }
