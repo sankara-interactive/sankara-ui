@@ -10,7 +10,8 @@ self-registering `@source`, and the test that proves it reaches a consumer.
 Behaviour does not change. D2–D4 of `2026-08-03-button-design.md` (`render`,
 `disabled` on a real `<button>` only, a rendered `<button>` is a button) carry
 over unchanged, as do the dev-mode errors. Only how classes get onto the element
-changes.
+changes. Old D5 (the focus ring reads `--color-ring`) survives as a utility;
+old D6 (the stylesheet carries structure only) is replaced by D7 below.
 
 ## Amendment to the direction spec
 
@@ -24,7 +25,9 @@ Checked 2026-11-16 with 4.0.2 and `tailwind-merge` uninstalled:
 merges `rounded-card shadow-card rounded-none shadow-none` to
 `rounded-none shadow-none`.
 
-So the peer list becomes `tailwind-variants: ^4.0.0`, and `tailwind-merge` is
+So the peer list becomes `tailwind-variants: ^4.0.2` — the floor is the
+version checked, since 4.0.x shipped two patches in its first two weeks — and
+`tailwind-merge` is
 not added. `@base-ui/react` is added with `Dialog`, the first component built on
 it — a peer nothing imports is install friction for no reason.
 
@@ -117,8 +120,10 @@ Existing callers pass `sankara-*` classes that never conflict, so their output
 is unchanged; a consumer using `cn` gets token-aware merging. One function, not
 a second `cnMerge` export.
 
-Its signature widens to whatever the merge accepts (strings, falsy values,
-nested arrays). Narrowing it back to today's type is not worth a wrapper.
+Its signature widens to whatever the merge accepts — checked: falsy values are
+dropped and nested arrays flattened (`'a', false, null, ['b', ['c']]` →
+`a b c`). Every existing call stays valid; narrowing it back to today's type is
+not worth a wrapper.
 
 ### D5 — The package stylesheet registers its own sources
 
@@ -140,25 +145,42 @@ The consumer's `@source ".../@sankara-ui/core/dist/components"` line becomes
 unnecessary; leaving it in is harmless. The README install block drops it, and
 the README's prose about scanning the package root goes with it.
 
-### D6 — Proof on a packed tarball, npm and pnpm
+### D6 — Proof on a packed Next build, npm and pnpm
 
-The direction spec asks for a layer-order test "on a packed Next build".
-Narrowed, because the layer question has changed shape: variant classes and a
-consumer's `className` are both utilities, in the same layer, and the merge
-removes the loser before CSS sees it. What can still break is the class never
-being emitted — a wrong `@source` path, or pnpm's symlinked layout resolving it
-somewhere else.
+Variant classes and a consumer's `className` are both utilities, in the same
+layer, and the merge removes the loser before CSS sees it — so the layer-order
+question the direction spec raised turns into three narrower ones, each of which
+only a real consumer build answers:
 
-So the packaging smoke job gains a step, run once with npm and once with pnpm:
-install the tarball, compile a stylesheet with `@tailwindcss/cli`, and assert
-the button's base classes are in the output. The stylesheet imports Tailwind
-with `source(none)`, so only the package's own `@source` can contribute
-classes — and a probe script that names the classes can't satisfy the
-assertion by being scanned itself.
+- **Are the classes emitted at all?** A wrong `@source` path, or pnpm's
+  symlinked `node_modules` resolved differently under Turbopack (Next 16's
+  default) than under the PostCSS plugin alone.
+- **Does it stay a server component?** `tailwind-variants` and the factory run
+  in an RSC; a project calling `createButton` in a module without `'use client'`
+  must build.
+- **Does the override reach the HTML?** The prerendered markup carries the
+  merged class string, not both classes.
 
-`@tailwindcss/cli` and Next's `@tailwindcss/postcss` share the engine and the
-`@source` resolution; a full Next build adds minutes per run and tests nothing
-this doesn't.
+A new CI job, `next-consumer`, in a matrix over npm and pnpm:
+
+1. Pack the tarball (as `packaging-smoke` does) and create a minimal Next 16
+   App Router app from a fixture committed under `test/next-consumer/`:
+   `globals.css` with the README's install block verbatim, and one static page
+   rendering a stock `<Button>`, a `className` override, and a button from a
+   project `createButton(tv({ extend: buttonVariants, … }))` in a server module.
+2. Install the tarball, `tailwind-variants` and Next with the matrix's package
+   manager, then `next build`.
+3. Assert, from a script outside the app directory (so Tailwind never scans the
+   class names it probes): the built CSS contains the base classes; the
+   prerendered HTML has the override's class and not the one it replaced; the
+   extended variant's class is present and its prop is not an attribute.
+
+The fixture's page names only the classes it overrides with, never the base
+classes — otherwise the app's own source scan would emit them and the
+`@source` assertion would pass without the package's help.
+
+`packaging-smoke` stays as is; it covers the FontAwesome-free import, which this
+job doesn't.
 
 ### D7 — What leaves `tokens.css`
 
@@ -184,7 +206,10 @@ class is removed from the rendered element.
   classes; they live in `src/variants/`, which the guard doesn't scan. D9 of
   the form spec (a utility default loses half of all overrides) no longer
   applies there because the merge settles the conflict before Tailwind's sort.
-- Packaging smoke (D6).
+- `next-consumer` CI job (D6).
+- Storybook needs no change: `.storybook/preview.css` imports
+  `src/styles/tokens.css`, whose `@source "../variants"` resolves to
+  `src/variants`.
 
 ## Release
 
